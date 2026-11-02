@@ -185,7 +185,7 @@ export function ProfileCard({
         <div className="relative flex items-center justify-between">
           <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold tracking-[-0.03em]">
             <TapMark className="size-4 opacity-80" />
-            cotap<span className="font-normal opacity-40">.id</span>
+            <span>cotap<span className="font-normal opacity-40">.id</span></span>
           </span>
           {profile.plan !== "basic" && (
             <span
