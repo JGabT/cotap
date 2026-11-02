@@ -78,10 +78,8 @@ export function ProfileWebPreview({
 
         <div className="relative mx-auto max-w-[360px]">
           <div className="flex items-center justify-between">
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[-0.03em]">
-              <span className="grid size-5 place-items-center rounded-[6px] bg-[#c9f45f] text-[#1a200c]">
-                <TapMark className="size-3" />
-              </span>
+            <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold tracking-[-0.03em]">
+              <TapMark className="size-4 opacity-80" />
               cotap<span className="font-normal text-black/40">.id</span>
             </span>
             <span className="rounded-full border border-black/10 px-2 py-0.5 text-[8px] font-medium tracking-[0.14em] text-black/45 uppercase">
