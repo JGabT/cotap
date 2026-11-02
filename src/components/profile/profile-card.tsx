@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { Link } from "react-router-dom"
 import {
   ArrowUpRight,
   Check,
@@ -183,10 +184,25 @@ export function ProfileCard({
         />
 
         <div className="relative flex items-center justify-between">
-          <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold tracking-[-0.03em]">
-            <TapMark className="size-4 opacity-80" />
-            <span>cotap<span className="font-normal opacity-40">.id</span></span>
-          </span>
+          {interactive ? (
+            <Link
+              to="/"
+              aria-label="Go to CoTap"
+              className="inline-flex items-center gap-1.5 text-[12px] font-semibold tracking-[-0.03em] no-underline transition-opacity hover:opacity-70"
+            >
+              <TapMark className="size-4 opacity-80" />
+              <span>
+                cotap<span className="font-normal opacity-40">.id</span>
+              </span>
+            </Link>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold tracking-[-0.03em]">
+              <TapMark className="size-4 opacity-80" />
+              <span>
+                cotap<span className="font-normal opacity-40">.id</span>
+              </span>
+            </span>
+          )}
           {profile.plan !== "basic" && (
             <span
               className="rounded-full px-2.5 py-0.5 text-[8.5px] font-semibold tracking-[0.12em] uppercase"
