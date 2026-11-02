@@ -129,6 +129,9 @@ export function SiteFooter() {
             <Link to="/faq" className="transition-colors hover:text-foreground">
               FAQ
             </Link>
+            <Link to="/admin" className="transition-colors hover:text-foreground">
+              Admin
+            </Link>
             <a
               href="mailto:hello@cotap.id"
               className="transition-colors hover:text-foreground"

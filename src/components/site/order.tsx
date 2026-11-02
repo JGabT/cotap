@@ -3,10 +3,12 @@ import { Link } from "react-router-dom"
 import {
   ArrowLeft,
   ArrowRight,
+  ArrowUpRight,
   Check,
   CheckCircle2,
   ChevronRight,
   CreditCard,
+  Loader2,
   MapPin,
   Package,
   Sparkles,
@@ -25,6 +27,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
+import { ApiError, api } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 export type OrderPlan = "basic" | "premium"
@@ -79,6 +82,9 @@ export function Order({ seed }: { seed?: OrderSeed | null }) {
   const [step, setStep] = useState(0)
   const [placed, setPlaced] = useState(false)
   const [orderId, setOrderId] = useState("")
+  const [profileUrl, setProfileUrl] = useState("")
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState("")
 
   const [plan, setPlan] = useState<OrderPlan>("basic")
   const [name, setName] = useState("")
@@ -131,10 +137,40 @@ export function Order({ seed }: { seed?: OrderSeed | null }) {
     setStep((current) => Math.max(current - 1, 0))
   }
 
-  function pay() {
-    if (!paymentValid) return
-    setOrderId(`CT-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`)
-    setPlaced(true)
+  async function pay() {
+    if (!paymentValid || submitting) return
+    setSubmitting(true)
+    setSubmitError("")
+    try {
+      const result = await api<{ orderId: string; profileUrl: string }>(
+        "/api/orders",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            name,
+            handle: displayHandle,
+            phone,
+            address,
+            plan,
+            delivery,
+            shipping,
+            total,
+            paymentMethod: payment,
+          }),
+        }
+      )
+      setOrderId(result.orderId)
+      setProfileUrl(result.profileUrl)
+      setPlaced(true)
+    } catch (requestError) {
+      setSubmitError(
+        requestError instanceof ApiError
+          ? requestError.message
+          : "Could not place your order. Please try again."
+      )
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   function startOver() {
@@ -145,6 +181,8 @@ export function Order({ seed }: { seed?: OrderSeed | null }) {
     setCvc("")
     setCardName("")
     setOrderId("")
+    setProfileUrl("")
+    setSubmitError("")
   }
 
   return (
@@ -249,24 +287,33 @@ export function Order({ seed }: { seed?: OrderSeed | null }) {
 
                   <div className="mx-auto mt-6 flex max-w-sm flex-col gap-2 sm:flex-row">
                     <Button
-                      render={<Link to="/preview" />}
+                      render={<Link to={profileUrl || `/u/${displayHandle}`} />}
                       nativeButton={false}
                       className="h-10 flex-1 rounded-lg text-[12.5px]"
+                    >
+                      View live profile
+                      <ArrowUpRight data-icon="inline-end" />
+                    </Button>
+                    <Button
+                      render={<Link to="/preview" />}
+                      nativeButton={false}
+                      variant="outline"
+                      className="h-10 flex-1 rounded-lg border-white/12 bg-white/[0.02] text-[12.5px] hover:bg-white/[0.06]"
                     >
                       Back to live preview
                       <ArrowRight data-icon="inline-end" />
                     </Button>
-                    <Button
-                      variant="outline"
-                      onClick={startOver}
-                      className="h-10 flex-1 rounded-lg border-white/12 bg-white/[0.02] text-[12.5px] hover:bg-white/[0.06]"
-                    >
-                      Place another order
-                    </Button>
                   </div>
+                  <button
+                    type="button"
+                    onClick={startOver}
+                    className="mt-3 text-[10.5px] text-muted-foreground underline decoration-white/20 underline-offset-4 transition-colors hover:text-foreground"
+                  >
+                    Place another order
+                  </button>
 
                   <p className="mt-4 text-[10px] text-muted-foreground">
-                    Demo checkout · No payment was processed.
+                    Demo payment · No card was charged. Your profile is saved.
                   </p>
                 </div>
               ) : (
@@ -677,10 +724,17 @@ export function Order({ seed }: { seed?: OrderSeed | null }) {
                         Demo checkout — no card is charged and no GCash request is sent.
                       </div>
 
+                      {submitError && (
+                        <p className="mt-3 rounded-lg border border-red-400/20 bg-red-400/10 px-3 py-2 text-[10.5px] text-red-300">
+                          {submitError}
+                        </p>
+                      )}
+
                       <div className="mt-5 flex gap-2">
                         <Button
                           variant="outline"
                           onClick={back}
+                          disabled={submitting}
                           className="h-10 rounded-lg border-white/12 bg-white/[0.02] px-3 text-[12.5px] hover:bg-white/[0.06]"
                         >
                           <ArrowLeft data-icon="inline-start" />
@@ -688,11 +742,20 @@ export function Order({ seed }: { seed?: OrderSeed | null }) {
                         </Button>
                         <Button
                           onClick={pay}
-                          disabled={!paymentValid}
+                          disabled={!paymentValid || submitting}
                           className="h-10 flex-1 rounded-lg text-[12.5px]"
                         >
-                          Pay {peso(total)}
-                          <ArrowRight data-icon="inline-end" />
+                          {submitting ? (
+                            <>
+                              <Loader2 className="size-3.5 animate-spin" />
+                              Processing…
+                            </>
+                          ) : (
+                            <>
+                              Pay {peso(total)}
+                              <ArrowRight data-icon="inline-end" />
+                            </>
+                          )}
                         </Button>
                       </div>
                     </div>

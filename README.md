@@ -1,8 +1,13 @@
 # CoTap — cotap.id
 
-Landing page for **CoTap**, a premium NFC business card that opens a live digital profile at `cotap.id/yourname`.
+Full-stack site for **CoTap**, a premium NFC business card that opens a live digital profile at `cotap.id/yourname`.
 
-Built with **Vite + React + TypeScript + Tailwind CSS v4 + shadcn/ui** and deployed as a static site on **Cloudflare Workers**.
+- **Frontend:** Vite + React 19 + TypeScript + Tailwind CSS v4 + shadcn/ui
+- **Routing:** React Router (SPA)
+- **Backend:** Cloudflare Worker API (`worker/index.ts`)
+- **Database:** Cloudflare D1 (`cotap-db`)
+- **Cache:** Cloudflare R2 (`cotap-cache`)
+- **Hosting:** Cloudflare Workers with static assets
 
 ## Pages
 
@@ -15,68 +20,132 @@ Built with **Vite + React + TypeScript + Tailwind CSS v4 + shadcn/ui** and deplo
 | `/teams` | CoTap for Teams |
 | `/pricing` | Basic ₱300, Premium ₱800 and Teams |
 | `/faq` | Product and shipping questions |
-| `/order` | Three-step demo checkout |
+| `/order` | Three-step checkout |
+| `/admin` | Owner console for members, links and plans |
+| `/u/:handle` | Public live profile (D1-backed, R2-cached) |
 
-Routing uses React Router. `wrangler.jsonc` serves `index.html` for every route via the SPA fallback, so direct links work on Workers.
+Direct links work because `wrangler.jsonc` uses the SPA fallback for non-API routes.
+
+## Backend
+
+### Data model
+
+D1 tables (`migrations/0001_init.sql`):
+
+- `users` — name, handle, role, email, phone, address, plan (`basic` / `pro` / `team`), status
+- `links` — label, URL, order, visibility, owner
+- `orders` — order id, plan, delivery method, shipping, total, payment method
+
+### R2 profile cache
+
+`GET /api/profiles/:handle` reads from R2 first:
+
+- key: `profiles/<handle>.json`
+- TTL safety: 24 hours
+- invalidated whenever a member, link, plan or order changes
+- response header `x-cotap-cache: HIT | MISS`
+
+The admin UI can also purge a profile manually with **Purge cache**.
+
+### API
+
+| Method | Route | Auth | Purpose |
+| --- | --- | --- | --- |
+| GET | `/api/profiles/:handle` | public | Cached public profile |
+| POST | `/api/orders` | public | Create an order + upsert a member |
+| POST | `/api/admin/login` | password | Signed 12-hour session cookie |
+| POST | `/api/admin/logout` | session | Clear session |
+| GET | `/api/admin/me` | public | Session check |
+| GET | `/api/admin/users` | admin | List members |
+| GET | `/api/admin/users/:id` | admin | Member + links |
+| PATCH | `/api/admin/users/:id` | admin | Update name, handle, role, contact, plan, status |
+| DELETE | `/api/admin/users/:id` | admin | Delete member + links |
+| POST | `/api/admin/users/:id/links` | admin | Add link |
+| PATCH | `/api/admin/users/:id/links/:linkId` | admin | Edit link |
+| DELETE | `/api/admin/users/:id/links/:linkId` | admin | Delete link |
+| DELETE | `/api/admin/users/:id/cache` | admin | Purge R2 profile cache |
+
+## Admin
+
+Open **`/admin`**. The console lets the owner:
+
+- search and select any member
+- change name, username, role, email, phone and status
+- add, edit and remove public links
+- switch plans (Basic / Pro / Teams), including one-click **Upgrade to Pro**
+- view the live public profile
+- purge the R2 cache for that profile
+- delete a member
+
+Auth is a single shared admin password stored as a Worker secret. Login issues an
+HttpOnly, signed session cookie (HMAC-SHA256, 12 hours).
+
+Set or rotate the secrets:
+
+```bash
+bunx wrangler secret put ADMIN_PASSWORD
+bunx wrangler secret put ADMIN_SESSION_SECRET
+```
+
+For local development, put the same values in `.dev.vars` (gitignored).
+
+## Checkout
+
+The checkout collects name, username, phone and address, then offers:
+
+- **Delivery** — +₱80, 3–5 working days
+- **Pickup** — free
+
+Card and GCash payment screens are **mock** — no money moves. Submitting the order
+does create a real D1 member and order record, and the new profile is immediately
+available at `/u/username`.
 
 ## Run locally
 
 ```bash
 bun install
-bun run dev
+bun run db:migrate:local
+bun run dev:worker
 ```
 
-The dev server runs at `http://localhost:5173`.
-
-## Build
-
-```bash
-bun run build
-```
-
-Outputs to `dist/`.
+`dev:worker` builds the site and starts Wrangler at `http://localhost:8787` with
+local D1 and R2 bindings. For frontend-only work, `bun run dev` runs Vite at
+`http://localhost:5173` and proxies `/api` to Wrangler on port 8787.
 
 ## Deploy
 
 ```bash
-bun run deploy
+bun run db:migrate   # apply schema + seed to remote D1 (first deploy)
+bun run deploy       # build + wrangler deploy
 ```
 
-This builds the site and runs `wrangler deploy` using `wrangler.jsonc`. On first deploy, Wrangler prints the free `*.workers.dev` URL for the `cotap` worker.
+The Worker bindings are declared in `wrangler.jsonc`:
 
-To preview the built site in the Workers runtime:
-
-```bash
-bun run cf:dev
-```
+- `DB` → D1 `cotap-db`
+- `CACHE` → R2 `cotap-cache`
+- `ASSETS` → built site in `dist/`
 
 ## Structure
 
 - `src/pages/` — one component per route
-- `src/components/site/` — shared sections and page building blocks
-- `src/components/ui/` — shadcn/ui primitives
+- `src/components/site/` — shared marketing sections and page building blocks
+- `src/components/admin/` — login, member editor and link editor
+- `worker/index.ts` — Worker API, auth, D1 queries and R2 cache
+- `migrations/` — D1 schema + demo seed
 - `src/index.css` — theme tokens, typography and motion
-- `wrangler.jsonc` — Cloudflare Workers static asset config
-- `public/_headers` — security and caching headers
+- `wrangler.jsonc` — Worker, D1, R2 and asset bindings
 
 ## Notes
 
-- The checkout is a **UI mockup** (₱300 Basic / ₱800 Premium + ₱80 delivery). No payment is processed and no order is stored — connect Stripe, PayMongo or GCash before launch.
+- Payments are **mock**. No card is charged and no GCash request is sent.
+- The public checkout upserts a member by username. Before production, add
+  ownership checks, rate limiting and a real payment provider (Stripe, PayMongo
+  or GCash).
+- Admin auth is a single shared password, not per-user accounts.
 - Social links in the footer point to example handles; update them to the real accounts.
-
-## Demo
-
-The **Live preview** section lets visitors type a name, pick a role and auto-generate a `cotap.id/yourname` link. Their details carry over to the checkout at the bottom of the page.
-
-## Checkout
-
-The mock checkout collects name, username, phone and address, then offers:
-
-- **Delivery** — +₱80, 3–5 working days
-- **Pickup** — free, address shared by SMS
-
-Payment supports mock card and GCash methods, followed by an order confirmation and a link back to the live preview. The physical card preview beside the form updates as details are entered.
 
 ## Colour
 
-The accent palette is a bright green (`--primary: oklch(0.885 0.176 124)`) defined in `src/index.css`. Change that token to re-theme buttons, links, glows and the favicon accent.
+The accent palette is a bright green (`--primary: oklch(0.885 0.176 124)`) defined
+in `src/index.css`. Change that token to re-theme buttons, links, glows and the
+favicon accent.
