@@ -95,10 +95,12 @@ export function ProfileWebPreview({
               <span className="absolute right-0.5 bottom-0.5 size-4 rounded-full border-2 border-[#f7f5ef] bg-[#5c8a2a]" />
             </div>
 
-            <h3 className="mt-3.5 max-w-full truncate text-[25px] leading-tight font-semibold tracking-[-0.035em]">
+            <h3 className="mt-3.5 max-w-full text-balance break-words text-[clamp(1.3rem,5.5vw,1.56rem)] leading-[1.12] font-semibold tracking-[-0.035em]">
               {displayName}
             </h3>
-            <p className="mt-1 max-w-full truncate text-[11.5px] text-black/55">{role}</p>
+            <p className="mt-1 max-w-full break-words text-[11.5px] leading-relaxed text-black/55">
+              {role}
+            </p>
             <span className="mt-2.5 rounded-full bg-black/[0.055] px-3 py-1 text-[9px] font-medium tracking-wide text-black/60">
               Open to collaborate
             </span>

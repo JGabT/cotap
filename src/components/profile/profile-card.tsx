@@ -200,11 +200,14 @@ export function ProfileCard({
         <div className="relative mt-6 flex flex-col items-center text-center">
           <ProfileAvatar profile={profile} theme={theme} />
 
-          <h1 className="mt-3.5 max-w-full truncate text-[25px] leading-tight font-semibold tracking-[-0.035em]">
+          <h1 className="mt-3.5 max-w-full text-balance break-words text-[clamp(1.3rem,5.5vw,1.56rem)] leading-[1.12] font-semibold tracking-[-0.035em]">
             {profile.name}
           </h1>
           {profile.role && (
-            <p className="mt-1 max-w-full truncate text-[11.5px]" style={{ color: muted }}>
+            <p
+              className="mt-1 max-w-full break-words text-[11.5px] leading-relaxed"
+              style={{ color: muted }}
+            >
               {profile.role}
             </p>
           )}
