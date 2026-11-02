@@ -50,7 +50,7 @@ export function Logo({
           wordmarkClassName
         )}
       >
-        cotap<span className="font-normal text-muted-foreground">.id</span>
+        cotap<span className="font-normal opacity-50">.id</span>
       </span>
     </span>
   )

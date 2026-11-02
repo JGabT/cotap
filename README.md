@@ -33,8 +33,8 @@ Direct links work because `wrangler.jsonc` uses the SPA fallback for non-API rou
 
 D1 tables (`migrations/0001_init.sql`):
 
-- `users` — name, handle, role, email, phone, address, plan (`basic` / `pro` / `team`), status, PBKDF2 password hash
-- `links` — label, URL, order, visibility, owner
+- `users` — name, handle, role, email, phone, address, plan (`basic` / `pro` / `team`), status, PBKDF2 password hash, avatar + theme
+- `links` — label, URL, symbol/icon, order, visibility, owner
 - `orders` — order id, plan, delivery method, shipping, total, payment method
 
 ### Auth
@@ -51,10 +51,13 @@ and portal routes reject admin cookies.
 
 `GET /api/profiles/:handle` reads from R2 first:
 
-- key: `profiles/<handle>.json`
+- profile key: `profiles/<handle>.json`
 - TTL safety: 24 hours
-- invalidated whenever a member, link, plan or order changes
+- invalidated whenever a member, link, plan, avatar, theme or order changes
 - response header `x-cotap-cache: HIT | MISS`
+
+Uploaded profile pictures live in the same bucket under `avatars/` and are served
+publicly at `/api/avatars/<file>`, with a 2 MB limit and immutable cache headers.
 
 The admin UI can also purge a profile manually with **Purge cache**.
 
@@ -73,6 +76,8 @@ The admin UI can also purge a profile manually with **Purge cache**.
 | POST | `/api/portal/links` | client | Add own link |
 | PATCH | `/api/portal/links/:linkId` | client | Edit own link |
 | DELETE | `/api/portal/links/:linkId` | client | Delete own link |
+| POST | `/api/portal/avatar` | client | Upload a profile picture to R2 |
+| GET | `/api/avatars/:file` | public | Serve an uploaded profile picture |
 | POST | `/api/admin/login` | password | Signed 12-hour session cookie |
 | POST | `/api/admin/logout` | session | Clear session |
 | GET | `/api/admin/me` | public | Session check |
@@ -114,13 +119,16 @@ For local development, put the same values in `.dev.vars` (gitignored).
 Clients sign in at **`/portal`** with their email and password. They can:
 
 - edit their name, username, role and phone
-- add, edit and remove their public links
+- choose a profile picture: initials, a stock symbol avatar, or upload a photo (2 MB, PNG/JPG/WebP)
+- design their public page: 6 presets plus custom accent, page and card colors, font and background pattern
+- add, edit and remove links, each with its own symbol/icon
 - copy or open their live profile
 - change their password
 - request a Pro/Teams upgrade
 
 Plans, status and email changes stay with the owner admin. Every client change
-purges the R2 cache and goes live immediately.
+purges the R2 cache and goes live immediately. The card preview in the portal is a
+live, interactive mirror of the public page.
 
 ## Checkout
 
@@ -167,6 +175,7 @@ The Worker bindings are declared in `wrangler.jsonc`:
 - `worker/index.ts` — Worker API, admin/client auth, D1 queries and R2 cache
 - `migrations/0001_init.sql` — schema + demo members
 - `migrations/0002_client_auth.sql` — password hashes + unique email index
+- `migrations/0003_profile_customization.sql` — avatars, themes and link symbols
 - `src/index.css` — theme tokens, typography and motion
 - `wrangler.jsonc` — Worker, D1, R2 and asset bindings
 
@@ -176,6 +185,8 @@ The Worker bindings are declared in `wrangler.jsonc`:
 - The public checkout rejects duplicate usernames and emails. Before production,
   add rate limiting, email verification and a real payment provider (Stripe,
   PayMongo or GCash).
+- Image uploads validate MIME type and size. Add magic-byte validation, moderation
+  and a cleanup job for orphaned R2 objects before production.
 - Admin auth is a single shared password, not per-user accounts. Client passwords
   are PBKDF2-hashed; add a reset flow before launch.
 - Seeded demo accounts share a demo password. Change or remove them before launch.

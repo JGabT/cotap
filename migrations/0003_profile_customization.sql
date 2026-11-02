@@ -1,0 +1,5 @@
+ALTER TABLE users ADD COLUMN avatar_kind TEXT NOT NULL DEFAULT 'initials';
+ALTER TABLE users ADD COLUMN avatar_value TEXT;
+ALTER TABLE users ADD COLUMN theme TEXT;
+
+ALTER TABLE links ADD COLUMN icon TEXT;

@@ -21,6 +21,9 @@ interface UserRow {
   address: string | null
   plan: Plan
   status: Status
+  avatar_kind: "initials" | "icon" | "image"
+  avatar_value: string | null
+  theme: string | null
   password_hash: string | null
   created_at: string
   updated_at: string
@@ -33,6 +36,7 @@ interface LinkRow {
   url: string
   sort_order: number
   visible: number
+  icon: string | null
   created_at: string
 }
 
@@ -96,6 +100,42 @@ function normalizeUrl(value: unknown) {
 function normalizeText(value: unknown, max: number) {
   const text = String(value ?? "").trim()
   return text ? text.slice(0, max) : ""
+}
+
+const THEME_FONTS = ["sans", "serif", "mono"]
+const THEME_PATTERNS = ["none", "grid", "glow", "dots"]
+const HEX_COLOR = /^#[0-9a-f]{6}$/i
+
+function parseTheme(value: unknown) {
+  let raw: unknown = value
+  if (typeof raw === "string") {
+    try {
+      raw = JSON.parse(raw)
+    } catch {
+      return null
+    }
+  }
+  if (!raw || typeof raw !== "object") return null
+  const theme = raw as Record<string, unknown>
+  const accent = String(theme.accent ?? "")
+  const page = String(theme.page ?? "")
+  const card = String(theme.card ?? "")
+  const font = String(theme.font ?? "sans")
+  const pattern = String(theme.pattern ?? "none")
+  if (!HEX_COLOR.test(accent) || !HEX_COLOR.test(page) || !HEX_COLOR.test(card)) {
+    return null
+  }
+  if (!THEME_FONTS.includes(font) || !THEME_PATTERNS.includes(pattern)) {
+    return null
+  }
+  return {
+    preset: normalizeText(theme.preset, 24) || "custom",
+    accent,
+    page,
+    card,
+    font: font as "sans" | "serif" | "mono",
+    pattern: pattern as "none" | "grid" | "glow" | "dots",
+  }
 }
 
 function normalizeEmail(value: unknown) {
@@ -282,6 +322,9 @@ function publicUser(user: UserRow) {
     address: user.address,
     plan: user.plan,
     status: user.status,
+    avatar_kind: user.avatar_kind,
+    avatar_value: user.avatar_value,
+    theme: parseTheme(user.theme),
     created_at: user.created_at,
     updated_at: user.updated_at,
   }
@@ -310,10 +353,11 @@ async function publicProfile(env: Env, handle: string) {
     const age = Date.now() - new Date(cached.uploaded).getTime()
     if (age < PROFILE_TTL_MS) {
       try {
-        return {
-          profile: await cached.json<Record<string, unknown>>(),
-          cache: "HIT" as const,
+        const cachedProfile = await cached.json<Record<string, unknown>>()
+        if (cachedProfile.avatar) {
+          return { profile: cachedProfile, cache: "HIT" as const }
         }
+        await env.CACHE.delete(key)
       } catch {
         await env.CACHE.delete(key)
       }
@@ -331,10 +375,10 @@ async function publicProfile(env: Env, handle: string) {
   }
 
   const { results: links } = await env.DB.prepare(
-    "SELECT label, url FROM links WHERE user_id = ? AND visible = 1 ORDER BY sort_order, id"
+    "SELECT label, url, icon FROM links WHERE user_id = ? AND visible = 1 ORDER BY sort_order, id"
   )
     .bind(user.id)
-    .all<{ label: string; url: string }>()
+    .all<{ label: string; url: string; icon: string | null }>()
 
   const profile = {
     name: user.name,
@@ -343,7 +387,20 @@ async function publicProfile(env: Env, handle: string) {
     email: user.email,
     phone: user.phone,
     plan: user.plan,
-    links: links.map((link) => ({ label: link.label, url: link.url })),
+    avatar: {
+      kind: user.avatar_kind,
+      value: user.avatar_value,
+      url:
+        user.avatar_kind === "image" && user.avatar_value
+          ? `/api/avatars/${user.avatar_value}`
+          : null,
+    },
+    theme: parseTheme(user.theme),
+    links: links.map((link) => ({
+      label: link.label,
+      url: link.url,
+      icon: link.icon,
+    })),
     updatedAt: user.updated_at,
   }
 
@@ -357,7 +414,7 @@ async function publicProfile(env: Env, handle: string) {
 
 async function listUsers(env: Env, query: string) {
   const base = `SELECT u.id, u.name, u.handle, u.role, u.email, u.phone, u.address,
-      u.plan, u.status, u.created_at, u.updated_at,
+      u.plan, u.status, u.avatar_kind, u.avatar_value, u.theme, u.created_at, u.updated_at,
       (SELECT COUNT(*) FROM links l WHERE l.user_id = u.id) AS links_count
     FROM users u`
 
@@ -540,15 +597,22 @@ async function handleApi(request: Request, env: Env) {
 
       if (segments.length === 4 && method === "DELETE") {
         const user = await env.DB.prepare(
-          "SELECT handle FROM users WHERE id = ?"
+          "SELECT handle, avatar_kind, avatar_value FROM users WHERE id = ?"
         )
           .bind(userId)
-          .first<{ handle: string }>()
+          .first<{
+            handle: string
+            avatar_kind: string
+            avatar_value: string | null
+          }>()
         if (!user) return notFound("User not found")
         await env.DB.batch([
           env.DB.prepare("DELETE FROM links WHERE user_id = ?").bind(userId),
           env.DB.prepare("DELETE FROM users WHERE id = ?").bind(userId),
         ])
+        if (user.avatar_kind === "image" && user.avatar_value) {
+          await env.CACHE.delete(`avatars/${user.avatar_value}`)
+        }
         await purgeProfile(env, user.handle)
         return json({ ok: true })
       }
@@ -561,9 +625,10 @@ async function handleApi(request: Request, env: Env) {
       segments.length === 5 &&
       method === "POST"
     ) {
-      const body = await readBody<{ label?: string; url?: string }>(request)
+      const body = await readBody<{ label?: string; url?: string; icon?: string }>(request)
       const label = normalizeText(body?.label, 60)
       const linkUrl = normalizeUrl(body?.url)
+      const icon = normalizeText(body?.icon, 16) || null
       if (!label || !linkUrl) return badRequest("A label and a valid URL are required")
 
       const user = await env.DB.prepare(
@@ -580,9 +645,9 @@ async function handleApi(request: Request, env: Env) {
         .first<{ max: number }>()
 
       await env.DB.prepare(
-        "INSERT INTO links (user_id, label, url, sort_order) VALUES (?, ?, ?, ?)"
+        "INSERT INTO links (user_id, label, url, sort_order, icon) VALUES (?, ?, ?, ?, ?)"
       )
-        .bind(userId, label, linkUrl, (max?.max ?? -1) + 1)
+        .bind(userId, label, linkUrl, (max?.max ?? -1) + 1, icon)
         .run()
 
       await purgeProfile(env, user.handle)
@@ -622,6 +687,10 @@ async function handleApi(request: Request, env: Env) {
           if (!linkUrl) return badRequest("Enter a valid URL")
           sets.push("url = ?")
           values.push(linkUrl)
+        }
+        if (typeof body.icon === "string" || body.icon === null) {
+          sets.push("icon = ?")
+          values.push(normalizeText(body.icon, 16) || null)
         }
         if (typeof body.visible === "boolean") {
           sets.push("visible = ?")
@@ -811,6 +880,43 @@ async function handleApi(request: Request, env: Env) {
         values.push(normalizeText(body.phone, 40) || null)
       }
 
+      let nextAvatarKind = user.avatar_kind
+      let nextAvatarValue = user.avatar_value
+
+      if (typeof body.avatar_kind === "string") {
+        const kind = body.avatar_kind
+        if (!["initials", "icon", "image"].includes(kind)) {
+          return badRequest("Invalid avatar type")
+        }
+
+        if (kind === "initials") {
+          nextAvatarValue = null
+        } else if (kind === "icon") {
+          const value = normalizeText(body.avatar_value, 16)
+          if (!value) return badRequest("Choose an avatar symbol")
+          nextAvatarValue = value
+        } else {
+          const value = normalizeText(body.avatar_value, 120)
+          if (!/^[a-z0-9-]+\.(png|jpe?g|webp)$/i.test(value)) {
+            return badRequest("Upload an avatar image first")
+          }
+          const exists = await env.CACHE.head(`avatars/${value}`)
+          if (!exists) return badRequest("Upload an avatar image first")
+          nextAvatarValue = value
+        }
+
+        nextAvatarKind = kind as "initials" | "icon" | "image"
+        sets.push("avatar_kind = ?", "avatar_value = ?")
+        values.push(nextAvatarKind, nextAvatarValue)
+      }
+
+      if (body.theme !== undefined) {
+        const theme = parseTheme(body.theme)
+        if (!theme) return badRequest("Invalid theme")
+        sets.push("theme = ?")
+        values.push(JSON.stringify(theme))
+      }
+
       if (!sets.length) return badRequest("Nothing to update")
 
       sets.push("updated_at = datetime('now')")
@@ -819,6 +925,14 @@ async function handleApi(request: Request, env: Env) {
       )
         .bind(...values, user.id)
         .run()
+
+      if (
+        user.avatar_kind === "image" &&
+        user.avatar_value &&
+        (nextAvatarKind !== "image" || nextAvatarValue !== user.avatar_value)
+      ) {
+        await env.CACHE.delete(`avatars/${user.avatar_value}`)
+      }
 
       await purgeProfile(env, user.handle)
       if (nextHandle !== user.handle) await purgeProfile(env, nextHandle)
@@ -834,9 +948,10 @@ async function handleApi(request: Request, env: Env) {
     const user = await currentUser(request, env)
     if (!user) return unauthorized()
 
-    const body = await readBody<{ label?: string; url?: string }>(request)
+    const body = await readBody<{ label?: string; url?: string; icon?: string }>(request)
     const label = normalizeText(body?.label, 60)
     const linkUrl = normalizeUrl(body?.url)
+    const icon = normalizeText(body?.icon, 16) || null
     if (!label || !linkUrl) {
       return badRequest("A label and a valid URL are required")
     }
@@ -848,9 +963,9 @@ async function handleApi(request: Request, env: Env) {
       .first<{ max: number }>()
 
     await env.DB.prepare(
-      "INSERT INTO links (user_id, label, url, sort_order) VALUES (?, ?, ?, ?)"
+      "INSERT INTO links (user_id, label, url, sort_order, icon) VALUES (?, ?, ?, ?, ?)"
     )
-      .bind(user.id, label, linkUrl, (max?.max ?? -1) + 1)
+      .bind(user.id, label, linkUrl, (max?.max ?? -1) + 1, icon)
       .run()
 
     await purgeProfile(env, user.handle)
@@ -891,6 +1006,10 @@ async function handleApi(request: Request, env: Env) {
         sets.push("url = ?")
         values.push(linkUrl)
       }
+      if (typeof body.icon === "string" || body.icon === null) {
+        sets.push("icon = ?")
+        values.push(normalizeText(body.icon, 16) || null)
+      }
       if (!sets.length) return badRequest("Nothing to update")
 
       await env.DB.prepare(
@@ -915,6 +1034,73 @@ async function handleApi(request: Request, env: Env) {
     }
 
     return json({ error: "Method not allowed" }, 405)
+  }
+
+  if (path.startsWith("/api/avatars/") && method === "GET") {
+    const file = decodeURIComponent(path.slice("/api/avatars/".length))
+    if (!/^[a-z0-9-]+\.(png|jpe?g|webp)$/i.test(file)) {
+      return notFound("Image not found")
+    }
+
+    const object = await env.CACHE.get(`avatars/${file}`)
+    if (!object) return notFound("Image not found")
+
+    return new Response(object.body, {
+      headers: {
+        "content-type": object.httpMetadata?.contentType ?? "image/png",
+        "cache-control": "public, max-age=31536000, immutable",
+        "x-content-type-options": "nosniff",
+      },
+    })
+  }
+
+  if (path === "/api/portal/avatar" && method === "POST") {
+    const user = await currentUser(request, env)
+    if (!user) return unauthorized()
+
+    let form: FormData
+    try {
+      form = await request.formData()
+    } catch {
+      return badRequest("Could not read the image")
+    }
+
+    const file = form.get("file")
+    if (!file || typeof file === "string") {
+      return badRequest("Choose an image to upload")
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      return badRequest("Profile pictures must be under 2 MB")
+    }
+
+    const extensions: Record<string, string> = {
+      "image/png": "png",
+      "image/jpeg": "jpg",
+      "image/webp": "webp",
+    }
+    const extension = extensions[file.type]
+    if (!extension) {
+      return badRequest("Use a PNG, JPG or WebP image")
+    }
+
+    const key = `${user.id}-${crypto.randomUUID()}.${extension}`
+    await env.CACHE.put(`avatars/${key}`, file.stream(), {
+      httpMetadata: { contentType: file.type },
+    })
+
+    if (user.avatar_kind === "image" && user.avatar_value) {
+      await env.CACHE.delete(`avatars/${user.avatar_value}`)
+    }
+
+    await env.DB.prepare(
+      "UPDATE users SET avatar_kind = 'image', avatar_value = ?, updated_at = datetime('now') WHERE id = ?"
+    )
+      .bind(key, user.id)
+      .run()
+
+    await purgeProfile(env, user.handle)
+    const detail = await userDetail(env, user.id)
+    return json(detail)
   }
 
   if (path.startsWith("/api/profiles/") && method === "GET") {
