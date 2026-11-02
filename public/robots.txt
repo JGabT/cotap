@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://cotap.id/sitemap.xml
