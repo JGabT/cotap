@@ -35,7 +35,11 @@ function cleanHandle(value: string) {
     .slice(0, 24)
 }
 
-export function Preview({ onClaim }: { onClaim: (handle: string) => void }) {
+export function Preview({
+  onOrder,
+}: {
+  onOrder: (seed: { name: string; handle: string }) => void
+}) {
   const [name, setName] = useState("")
   const [role, setRole] = useState(roles[0])
   const [customHandle, setCustomHandle] = useState("")
@@ -153,11 +157,11 @@ export function Preview({ onClaim }: { onClaim: (handle: string) => void }) {
                 </div>
 
                 <Button
-                  onClick={() => onClaim(displayHandle)}
+                  onClick={() => onOrder({ name, handle: displayHandle })}
                   disabled={!canClaim}
                   className="mt-5 h-10 w-full rounded-lg text-[12.5px] font-medium"
                 >
-                  Claim this preview
+                  Continue to order
                   <ArrowRight data-icon="inline-end" />
                 </Button>
 

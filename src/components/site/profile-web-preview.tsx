@@ -72,14 +72,14 @@ export function ProfileWebPreview({
           className="pointer-events-none absolute inset-x-0 top-0 h-44"
           style={{
             background:
-              "radial-gradient(ellipse at 50% 0%, #d9e8ff 0%, transparent 70%)",
+              "radial-gradient(ellipse at 50% 0%, #ecf8d3 0%, transparent 70%)",
           }}
         />
 
         <div className="relative mx-auto max-w-[360px]">
           <div className="flex items-center justify-between">
             <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[-0.03em]">
-              <span className="grid size-5 place-items-center rounded-[6px] bg-[#4c9aff] text-[#0b1a33]">
+              <span className="grid size-5 place-items-center rounded-[6px] bg-[#c9f45f] text-[#1a200c]">
                 <TapMark className="size-3" />
               </span>
               cotap<span className="font-normal text-black/40">.id</span>
@@ -91,7 +91,7 @@ export function ProfileWebPreview({
 
           <div className="mt-6 flex flex-col items-center text-center">
             <div className="relative">
-              <div className="grid size-[74px] place-items-center rounded-full bg-[linear-gradient(140deg,#a8ccff,#2f6fd0_58%,#123a6b)] text-[23px] font-semibold text-[#0b1a33] ring-4 ring-black/5">
+              <div className="grid size-[74px] place-items-center rounded-full bg-[linear-gradient(140deg,#d8f28c,#8fb84a_58%,#42551f)] text-[23px] font-semibold text-[#1a200c] ring-4 ring-black/5">
                 {initials}
               </div>
               <span className="absolute right-0.5 bottom-0.5 size-4 rounded-full border-2 border-[#f7f5ef] bg-[#5c8a2a]" />

@@ -52,7 +52,7 @@ export function ProfilePhone({ className }: { className?: string }) {
 
           <div className="mt-5 flex flex-col items-center text-center">
             <div className="relative">
-              <div className="grid size-[62px] place-items-center rounded-full bg-[linear-gradient(140deg,#a8ccff,#2f6fd0_55%,#123a6b)] text-[19px] font-semibold text-[#0b1a33] ring-4 ring-black/5">
+              <div className="grid size-[62px] place-items-center rounded-full bg-[linear-gradient(140deg,#d8f28c,#8fb84a_55%,#42551f)] text-[19px] font-semibold text-[#1a200c] ring-4 ring-black/5">
                 AP
               </div>
               <span className="absolute right-0 bottom-0 size-3.5 rounded-full border-2 border-[#f7f5ef] bg-[#5c8a2a]" />

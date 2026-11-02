@@ -59,12 +59,10 @@ export function Logo({
 /** Compact mark used inside the tiny card artwork. */
 export function CardWordmark({ className }: { className?: string }) {
   return (
-    <span className={cn("inline-flex items-center gap-[1.6cqw]", className)}>
-      <span className="grid size-[6.4cqw] place-items-center rounded-[1.7cqw] bg-primary text-primary-foreground">
-        <TapMark className="size-[4.2cqw]" />
-      </span>
+    <span className={cn("inline-flex items-center gap-[1.9cqw]", className)}>
+      <TapMark className="size-[5cqw] opacity-85" />
       <span className="text-[4.1cqw] leading-none font-semibold tracking-[-0.04em]">
-        cotap<span className="opacity-55">.id</span>
+        cotap<span className="opacity-45">.id</span>
       </span>
     </span>
   )

@@ -90,7 +90,7 @@ export function Features() {
                 </div>
 
                 <div className="flex items-center gap-3 pt-3.5">
-                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[linear-gradient(140deg,#a8ccff,#2f6fd0_60%,#123a6b)] text-[11px] font-semibold text-[#0b1a33]">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[linear-gradient(140deg,#d8f28c,#8fb84a_60%,#42551f)] text-[11px] font-semibold text-[#1a200c]">
                     AP
                   </span>
                   <div className="min-w-0 flex-1">

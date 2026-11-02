@@ -1,6 +1,5 @@
 import { useState } from "react"
 
-import { ClaimCta } from "@/components/site/claim-cta"
 import { Faq } from "@/components/site/faq"
 import { Features } from "@/components/site/features"
 import { SiteFooter } from "@/components/site/footer"
@@ -8,18 +7,19 @@ import { Hero } from "@/components/site/hero"
 import { HowItWorks } from "@/components/site/how-it-works"
 import { Marquee } from "@/components/site/marquee"
 import { Materials } from "@/components/site/materials"
+import { Order, type OrderSeed } from "@/components/site/order"
 import { Preview } from "@/components/site/preview"
 import { Pricing } from "@/components/site/pricing"
 import { SiteHeader } from "@/components/site/site-header"
 import { Teams } from "@/components/site/teams"
 
 export default function App() {
-  const [claimSeed, setClaimSeed] = useState<{ handle: string } | null>(null)
+  const [orderSeed, setOrderSeed] = useState<OrderSeed | null>(null)
 
-  function handleClaim(handle: string) {
-    setClaimSeed({ handle })
+  function handleOrder(seed: OrderSeed = {}) {
+    setOrderSeed({ ...seed })
 
-    const target = document.getElementById("claim")
+    const target = document.getElementById("order")
     if (!target) return
 
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -44,13 +44,13 @@ export default function App() {
         <Hero />
         <Marquee />
         <HowItWorks />
-        <Preview onClaim={handleClaim} />
+        <Preview onOrder={handleOrder} />
         <Features />
-        <Materials />
+        <Materials onOrder={(plan) => handleOrder({ plan })} />
         <Teams />
-        <Pricing />
+        <Pricing onOrder={(plan) => handleOrder({ plan })} />
         <Faq />
-        <ClaimCta seed={claimSeed} />
+        <Order seed={orderSeed} />
       </main>
 
       <SiteFooter />

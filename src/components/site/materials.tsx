@@ -54,7 +54,11 @@ const materials: Array<{
 
 const highlights = ["Custom print or engraving", "NTAG213 / NTAG215", "Laser-etched QR"]
 
-export function Materials() {
+export function Materials({
+  onOrder,
+}: {
+  onOrder: (plan: "basic" | "premium") => void
+}) {
   const [active, setActive] = useState<CardVariant>("pvc")
 
   return (
@@ -98,7 +102,7 @@ export function Materials() {
                     className="pointer-events-none absolute inset-0"
                     style={{
                       background:
-                        "radial-gradient(ellipse at 50% 40%, oklch(0.66 0.17 255 / 8%), transparent 65%)",
+                        "radial-gradient(ellipse at 50% 40%, oklch(0.885 0.176 124 / 8%), transparent 65%)",
                     }}
                   />
                   <div className="pointer-events-none absolute top-1/2 left-1/2 size-[82%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/[0.05]" />
@@ -182,8 +186,11 @@ export function Materials() {
                   </dl>
 
                   <Button
-                    render={<a href="#claim" />}
+                    render={<a href="#order" />}
                     nativeButton={false}
+                    onClick={() =>
+                      onOrder(material.value === "pvc" ? "basic" : "premium")
+                    }
                     className="mt-7 h-11 w-full rounded-full text-[13.5px]"
                   >
                     Choose {material.label}

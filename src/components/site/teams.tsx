@@ -19,7 +19,7 @@ const members = [
     email: "alexandra@acme.co",
     handle: "alexandra",
     status: "Active",
-    tone: "from-[#a8ccff] to-[#3d78c9] text-[#0b1a33]",
+    tone: "from-[#d8f28c] to-[#6d8f36] text-[#1a200c]",
   },
   {
     initials: "RP",
@@ -97,7 +97,7 @@ export function Teams() {
             <Reveal delay={260}>
               <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
                 <Button
-                  render={<a href="#claim" />}
+                  render={<a href="mailto:hello@cotap.id?subject=CoTap%20for%20Teams" />}
                   nativeButton={false}
                   className="h-11 rounded-full px-6 text-[14px]"
                 >

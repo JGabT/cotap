@@ -21,7 +21,7 @@ const columns = [
       { label: "For teams", href: "#teams" },
       { label: "FAQ", href: "#faq" },
       { label: "Contact", href: "mailto:hello@cotap.id" },
-      { label: "Reserve a card", href: "#claim" },
+      { label: "Reserve a card", href: "#order" },
     ],
   },
 ]
@@ -91,7 +91,7 @@ export function SiteFooter() {
                 cotap.id/<span className="text-foreground">yourname</span>
               </p>
               <a
-                href="#claim"
+                href="#order"
                 className="mt-2 inline-flex items-center gap-1 text-[10.5px] font-medium text-primary hover:opacity-80"
               >
                 Claim it now

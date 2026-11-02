@@ -61,7 +61,7 @@ export function SiteHeader() {
 
         <div className="flex items-center gap-2">
           <Button
-            render={<a href="#claim" />}
+            render={<a href="#order" />}
             nativeButton={false}
             className="hidden h-9 rounded-full px-4 sm:inline-flex"
           >
@@ -108,7 +108,7 @@ export function SiteHeader() {
 
               <div className="mt-auto p-5">
                 <Button
-                  render={<a href="#claim" onClick={() => setOpen(false)} />}
+                  render={<a href="#order" onClick={() => setOpen(false)} />}
                   nativeButton={false}
                   className="h-11 w-full rounded-xl text-[15px]"
                 >

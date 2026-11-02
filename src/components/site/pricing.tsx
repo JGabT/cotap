@@ -7,8 +7,20 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 
-const plans = [
+type PricingPlan = {
+  key: "basic" | "premium" | null
+  name: string
+  price: string
+  unit: string
+  description: string
+  features: string[]
+  cta: string
+  highlighted: boolean
+}
+
+const plans: PricingPlan[] = [
   {
+    key: "basic",
     name: "Basic",
     price: "₱300",
     unit: "one-time · per card",
@@ -26,6 +38,7 @@ const plans = [
     highlighted: false,
   },
   {
+    key: "premium",
     name: "Premium",
     price: "₱800",
     unit: "one-time · per card",
@@ -43,6 +56,7 @@ const plans = [
     highlighted: true,
   },
   {
+    key: null,
     name: "CoTap for Teams",
     price: "Custom",
     unit: "for 10+ employees",
@@ -59,7 +73,11 @@ const plans = [
   },
 ]
 
-export function Pricing() {
+export function Pricing({
+  onOrder,
+}: {
+  onOrder: (plan: "basic" | "premium") => void
+}) {
   return (
     <section id="pricing" className="relative py-24 sm:py-28">
       <div className="hairline absolute inset-x-0 top-0" />
@@ -136,19 +154,29 @@ export function Pricing() {
                   ))}
                 </ul>
 
-                <Button
-                  render={<a href="#claim" />}
-                  nativeButton={false}
-                  variant={plan.highlighted ? "default" : "outline"}
-                  className={cn(
-                    "mt-8 h-11 w-full rounded-full text-[13.5px]",
-                    plan.highlighted
-                      ? "shadow-[0_0_40px_-14px_var(--primary)]"
-                      : "border-white/12 bg-white/[0.02] hover:bg-white/[0.06]"
-                  )}
-                >
-                  {plan.cta}
-                </Button>
+                {plan.key ? (
+                  <Button
+                    onClick={() => onOrder(plan.key as "basic" | "premium")}
+                    variant={plan.highlighted ? "default" : "outline"}
+                    className={cn(
+                      "mt-8 h-11 w-full rounded-full text-[13.5px]",
+                      plan.highlighted
+                        ? "shadow-[0_0_40px_-14px_var(--primary)]"
+                        : "border-white/12 bg-white/[0.02] hover:bg-white/[0.06]"
+                    )}
+                  >
+                    {plan.cta}
+                  </Button>
+                ) : (
+                  <Button
+                    render={<a href="mailto:hello@cotap.id?subject=CoTap%20for%20Teams" />}
+                    nativeButton={false}
+                    variant="outline"
+                    className="mt-8 h-11 w-full rounded-full border-white/12 bg-white/[0.02] text-[13.5px] hover:bg-white/[0.06]"
+                  >
+                    {plan.cta}
+                  </Button>
+                )}
               </Card>
             </Reveal>
           ))}
@@ -157,7 +185,7 @@ export function Pricing() {
         <Reveal delay={200}>
           <p className="mt-6 text-center text-[11.5px] text-muted-foreground">
             Prices in PHP, excluding applicable taxes. Need 50+ cards?{" "}
-            <a href="#claim" className="text-foreground underline decoration-white/25 underline-offset-4 hover:decoration-primary">
+            <a href="#order" className="text-foreground underline decoration-white/25 underline-offset-4 hover:decoration-primary">
               Talk to us
             </a>
             .

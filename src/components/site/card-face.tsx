@@ -59,7 +59,9 @@ export function CardFace({
             <div className="mt-[2.2cqw] truncate text-[5.6cqw] leading-none font-medium tracking-[-0.035em]">
               {name}
             </div>
-            <div className="mt-[1.6cqw] truncate text-[2.9cqw] opacity-60">{role}</div>
+            {role && (
+              <div className="mt-[1.6cqw] truncate text-[2.9cqw] opacity-60">{role}</div>
+            )}
             <div className="mt-[4.4cqw] flex items-center gap-[1.6cqw] text-[3.1cqw] font-medium">
               <span className="size-[1.1cqw] rounded-full bg-current opacity-80" />
               <span className="truncate">cotap.id/{handle}</span>
