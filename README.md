@@ -4,6 +4,21 @@ Landing page for **CoTap**, a premium NFC business card that opens a live digita
 
 Built with **Vite + React + TypeScript + Tailwind CSS v4 + shadcn/ui** and deployed as a static site on **Cloudflare Workers**.
 
+## Pages
+
+| Route | Purpose |
+| --- | --- |
+| `/` | Short landing page: hero, three routes in |
+| `/how-it-works` | The tap flow plus the full feature grid |
+| `/preview` | Interactive name/role/link preview |
+| `/card` | Card finishes, materials and specs |
+| `/teams` | CoTap for Teams |
+| `/pricing` | Basic ₱300, Premium ₱800 and Teams |
+| `/faq` | Product and shipping questions |
+| `/order` | Three-step demo checkout |
+
+Routing uses React Router. `wrangler.jsonc` serves `index.html` for every route via the SPA fallback, so direct links work on Workers.
+
 ## Run locally
 
 ```bash
@@ -37,7 +52,8 @@ bun run cf:dev
 
 ## Structure
 
-- `src/components/site/` — page sections (hero, live preview, features, materials, teams, pricing, FAQ, checkout, footer)
+- `src/pages/` — one component per route
+- `src/components/site/` — shared sections and page building blocks
 - `src/components/ui/` — shadcn/ui primitives
 - `src/index.css` — theme tokens, typography and motion
 - `wrangler.jsonc` — Cloudflare Workers static asset config

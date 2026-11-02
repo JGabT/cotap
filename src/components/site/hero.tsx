@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom"
 import { ArrowRight, Check, Play, Smartphone } from "lucide-react"
 
 import { CardFace } from "@/components/site/card-face"
@@ -54,7 +55,7 @@ export function Hero() {
             <Reveal delay={240}>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
                 <Button
-                  render={<a href="#order" />}
+                  render={<Link to="/order" />}
                   nativeButton={false}
                   className="h-11 rounded-full px-6 text-[14px] font-medium shadow-[0_0_40px_-12px_var(--primary)]"
                 >
@@ -62,7 +63,7 @@ export function Hero() {
                   <ArrowRight data-icon="inline-end" />
                 </Button>
                 <Button
-                  render={<a href="#how" />}
+                  render={<Link to="/how-it-works" />}
                   nativeButton={false}
                   variant="outline"
                   className="h-11 rounded-full border-white/12 bg-white/[0.02] px-5 text-[14px] hover:bg-white/[0.06]"

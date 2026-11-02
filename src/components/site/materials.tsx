@@ -186,8 +186,6 @@ export function Materials({
                   </dl>
 
                   <Button
-                    render={<a href="#order" />}
-                    nativeButton={false}
                     onClick={() =>
                       onOrder(material.value === "pvc" ? "basic" : "premium")
                     }

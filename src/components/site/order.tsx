@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { Link } from "react-router-dom"
 import {
   ArrowLeft,
   ArrowRight,
@@ -248,7 +249,7 @@ export function Order({ seed }: { seed?: OrderSeed | null }) {
 
                   <div className="mx-auto mt-6 flex max-w-sm flex-col gap-2 sm:flex-row">
                     <Button
-                      render={<a href="#preview" />}
+                      render={<Link to="/preview" />}
                       nativeButton={false}
                       className="h-10 flex-1 rounded-lg text-[12.5px]"
                     >

@@ -1,7 +1,7 @@
+import { Link } from "react-router-dom"
 import { ArrowUpRight, Mail } from "lucide-react"
 
 import { GithubIcon, InstagramIcon, LinkedinIcon } from "@/components/site/brand-icons"
-
 import { Logo } from "@/components/site/logo"
 import { Separator } from "@/components/ui/separator"
 
@@ -9,19 +9,19 @@ const columns = [
   {
     title: "Product",
     links: [
-      { label: "How it works", href: "#how" },
-      { label: "The card", href: "#card" },
-      { label: "Features", href: "#features" },
-      { label: "Pricing", href: "#pricing" },
+      { label: "How it works", to: "/how-it-works" },
+      { label: "Live preview", to: "/preview" },
+      { label: "The card", to: "/card" },
+      { label: "Pricing", to: "/pricing" },
     ],
   },
   {
     title: "Company",
     links: [
-      { label: "For teams", href: "#teams" },
-      { label: "FAQ", href: "#faq" },
-      { label: "Contact", href: "mailto:hello@cotap.id" },
-      { label: "Reserve a card", href: "#order" },
+      { label: "For teams", to: "/teams" },
+      { label: "FAQ", to: "/faq" },
+      { label: "Contact", to: "mailto:hello@cotap.id" },
+      { label: "Order a card", to: "/order" },
     ],
   },
 ]
@@ -35,13 +35,19 @@ const socials = [
   { label: "Email", icon: Mail, href: "mailto:hello@cotap.id" },
 ]
 
+function isExternal(to: string) {
+  return to.startsWith("mailto:") || to.startsWith("http")
+}
+
 export function SiteFooter() {
   return (
     <footer className="relative border-t border-white/8 pt-14 pb-8">
       <div className="site-container">
         <div className="grid gap-10 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
           <div>
-            <Logo />
+            <Link to="/" aria-label="CoTap home">
+              <Logo />
+            </Link>
             <p className="mt-4 max-w-[19rem] text-[12.5px] leading-relaxed text-muted-foreground">
               One card that carries your identity, your work and your next
               introduction. Tap, connect, collaborate.
@@ -70,12 +76,21 @@ export function SiteFooter() {
               <ul className="mt-4 space-y-3">
                 {column.links.map((link) => (
                   <li key={link.label}>
-                    <a
-                      href={link.href}
-                      className="text-[12.5px] text-foreground/70 transition-colors hover:text-foreground"
-                    >
-                      {link.label}
-                    </a>
+                    {isExternal(link.to) ? (
+                      <a
+                        href={link.to}
+                        className="text-[12.5px] text-foreground/70 transition-colors hover:text-foreground"
+                      >
+                        {link.label}
+                      </a>
+                    ) : (
+                      <Link
+                        to={link.to}
+                        className="text-[12.5px] text-foreground/70 transition-colors hover:text-foreground"
+                      >
+                        {link.label}
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -90,13 +105,13 @@ export function SiteFooter() {
               <p className="font-mono text-[11px] text-muted-foreground">
                 cotap.id/<span className="text-foreground">yourname</span>
               </p>
-              <a
-                href="#order"
+              <Link
+                to="/preview"
                 className="mt-2 inline-flex items-center gap-1 text-[10.5px] font-medium text-primary hover:opacity-80"
               >
                 Claim it now
                 <ArrowUpRight className="size-3" />
-              </a>
+              </Link>
             </div>
             <p className="mt-4 text-[10.5px] leading-relaxed text-muted-foreground/70">
               Made in the Philippines.
@@ -111,15 +126,22 @@ export function SiteFooter() {
         <div className="flex flex-col items-start justify-between gap-3 text-[10.5px] text-muted-foreground/70 sm:flex-row sm:items-center">
           <p>© {currentYear} CoTap. All rights reserved.</p>
           <div className="flex items-center gap-5">
-            <a href="#top" className="transition-colors hover:text-foreground">
-              Privacy
+            <Link to="/faq" className="transition-colors hover:text-foreground">
+              FAQ
+            </Link>
+            <a
+              href="mailto:hello@cotap.id"
+              className="transition-colors hover:text-foreground"
+            >
+              Contact
             </a>
-            <a href="#top" className="transition-colors hover:text-foreground">
-              Terms
-            </a>
-            <a href="#top" className="transition-colors hover:text-foreground">
+            <button
+              type="button"
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              className="transition-colors hover:text-foreground"
+            >
               Back to top ↑
-            </a>
+            </button>
           </div>
         </div>
       </div>

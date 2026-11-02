@@ -185,7 +185,7 @@ export function Pricing({
         <Reveal delay={200}>
           <p className="mt-6 text-center text-[11.5px] text-muted-foreground">
             Prices in PHP, excluding applicable taxes. Need 50+ cards?{" "}
-            <a href="#order" className="text-foreground underline decoration-white/25 underline-offset-4 hover:decoration-primary">
+            <a href="mailto:hello@cotap.id?subject=CoTap%20for%20Teams" className="text-foreground underline decoration-white/25 underline-offset-4 hover:decoration-primary">
               Talk to us
             </a>
             .

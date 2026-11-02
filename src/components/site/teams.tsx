@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom"
 import { ArrowRight, Check, Plus, Search, ShieldCheck, Users } from "lucide-react"
 
 import { TapMark } from "@/components/site/logo"
@@ -105,7 +106,7 @@ export function Teams() {
                   <ArrowRight data-icon="inline-end" />
                 </Button>
                 <Button
-                  render={<a href="#pricing" />}
+                  render={<Link to="/pricing" />}
                   nativeButton={false}
                   variant="ghost"
                   className="h-11 rounded-full px-4 text-[13.5px] text-muted-foreground hover:text-foreground"
