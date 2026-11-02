@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
-import { ArrowUpRight } from "lucide-react"
 
 import { ProfileCard } from "@/components/profile/profile-card"
-import { Logo } from "@/components/site/logo"
 import { usePageMeta } from "@/components/site/use-page-meta"
 import { Button } from "@/components/ui/button"
 import {
@@ -70,7 +68,6 @@ export function PublicProfilePage() {
   const pageLight = isLightColor(theme.page)
   const pageInk = pageLight ? "#15161a" : "#f7f5ef"
   const pageMuted = pageLight ? "rgba(21,22,26,0.6)" : "rgba(247,245,239,0.6)"
-  const pageLine = pageLight ? "rgba(21,22,26,0.12)" : "rgba(255,255,255,0.1)"
   const patternLine = pageLight ? "rgba(21,22,26,0.07)" : "rgba(255,255,255,0.06)"
 
   const patternStyle =
@@ -101,25 +98,7 @@ export function PublicProfilePage() {
         className="site-container relative flex min-h-svh flex-col"
         style={{ fontFamily: themeFontFamily(theme) }}
       >
-        <header className="flex h-16 items-center justify-between sm:h-20">
-          <Link to="/" aria-label="CoTap home">
-            <Logo
-              wordmarkClassName={pageLight ? "text-[#15161a]" : undefined}
-            />
-          </Link>
-          <Button
-            render={<Link to="/order" />}
-            nativeButton={false}
-            variant="outline"
-            className="h-8 rounded-full bg-transparent px-3.5 text-[11.5px] hover:bg-black/5"
-            style={{ borderColor: pageLine, color: pageInk }}
-          >
-            Make yours
-            <ArrowUpRight data-icon="inline-end" />
-          </Button>
-        </header>
-
-        <main className="flex flex-1 flex-col items-center justify-center py-10">
+        <main className="flex flex-1 flex-col items-center justify-center py-16 sm:py-20">
           {state === "loading" && <ProfileSkeleton />}
 
           {state === "error" && (
@@ -169,28 +148,6 @@ export function PublicProfilePage() {
           )}
         </main>
 
-        <footer
-          className="flex flex-col items-center justify-between gap-2 border-t py-5 text-[10px] sm:flex-row"
-          style={{ borderColor: pageLine, color: pageMuted }}
-        >
-          <p>One card. One tap. Every connection.</p>
-          <div className="flex items-center gap-4">
-            <Link
-              to="/portal"
-              className="transition-opacity hover:opacity-70"
-              style={{ color: pageMuted }}
-            >
-              Manage this profile
-            </Link>
-            <Link
-              to="/"
-              className="transition-opacity hover:opacity-70"
-              style={{ color: pageMuted }}
-            >
-              cotap.id
-            </Link>
-          </div>
-        </footer>
       </div>
     </div>
   )

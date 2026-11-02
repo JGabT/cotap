@@ -33,7 +33,7 @@ Direct links work because `wrangler.jsonc` uses the SPA fallback for non-API rou
 
 D1 tables (`migrations/0001_init.sql`):
 
-- `users` — name, handle, role, email, phone, address, plan (`basic` / `pro` / `team`), status, PBKDF2 password hash, avatar + theme
+- `users` — name, handle, role, bio, email, phone, address, plan (`basic` / `pro` / `team`), status, PBKDF2 password hash, avatar + theme
 - `links` — label, URL, symbol/icon, order, visibility, owner
 - `orders` — order id, plan, delivery method, shipping, total, payment method
 
@@ -118,7 +118,7 @@ For local development, put the same values in `.dev.vars` (gitignored).
 
 Clients sign in at **`/portal`** with their email and password. They can:
 
-- edit their name, username, role and phone
+- edit their name, username, role, bio and phone
 - choose a profile picture: initials, a stock symbol avatar, or upload a photo (2 MB, PNG/JPG/WebP)
 - design their public page: 6 presets plus custom accent, page and card colors, font and background pattern
 - add, edit and remove links, each with its own symbol/icon
@@ -176,6 +176,7 @@ The Worker bindings are declared in `wrangler.jsonc`:
 - `migrations/0001_init.sql` — schema + demo members
 - `migrations/0002_client_auth.sql` — password hashes + unique email index
 - `migrations/0003_profile_customization.sql` — avatars, themes and link symbols
+- `migrations/0004_profile_bio.sql` — profile bios
 - `src/index.css` — theme tokens, typography and motion
 - `wrangler.jsonc` — Worker, D1, R2 and asset bindings
 

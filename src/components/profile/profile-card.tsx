@@ -208,12 +208,14 @@ export function ProfileCard({
               {profile.role}
             </p>
           )}
-          <span
-            className="mt-2.5 rounded-full px-3 py-1 text-[9px] font-medium tracking-wide"
-            style={{ backgroundColor: surface, color: muted }}
-          >
-            Open to collaborate
-          </span>
+          {profile.bio && (
+            <p
+              className="mt-2.5 max-w-[290px] text-center text-[10.5px] leading-relaxed whitespace-pre-line"
+              style={{ color: muted }}
+            >
+              {profile.bio}
+            </p>
+          )}
         </div>
 
         <div className="relative mt-5">
@@ -235,20 +237,27 @@ export function ProfileCard({
             </div>
           )}
 
-          <div className="mt-1.5 flex justify-center gap-1.5">
+          <div
+            className="mt-1.5 grid gap-1.5"
+            style={{
+              gridTemplateColumns: `repeat(${
+                1 + (profile.phone ? 1 : 0) + (profile.email ? 1 : 0)
+              }, minmax(0, 1fr))`,
+            }}
+          >
             {profile.phone &&
               (interactive ? (
                 <a
                   href={`tel:${profile.phone}`}
                   aria-label="Call"
-                  className="flex h-9 w-16 items-center justify-center rounded-lg border transition-opacity hover:opacity-75"
+                  className="flex h-10 w-full items-center justify-center rounded-xl border transition-opacity hover:opacity-75"
                   style={{ borderColor: line, backgroundColor: surface, color: ink }}
                 >
                   <Phone className="size-3.5" />
                 </a>
               ) : (
                 <span
-                  className="flex h-9 w-16 items-center justify-center rounded-lg border"
+                  className="flex h-10 w-full items-center justify-center rounded-xl border"
                   style={{ borderColor: line, backgroundColor: surface, color: ink }}
                 >
                   <Phone className="size-3.5" />
@@ -259,14 +268,14 @@ export function ProfileCard({
                 <a
                   href={`mailto:${profile.email}`}
                   aria-label="Email"
-                  className="flex h-9 w-16 items-center justify-center rounded-lg border transition-opacity hover:opacity-75"
+                  className="flex h-10 w-full items-center justify-center rounded-xl border transition-opacity hover:opacity-75"
                   style={{ borderColor: line, backgroundColor: surface, color: ink }}
                 >
                   <Mail className="size-3.5" />
                 </a>
               ) : (
                 <span
-                  className="flex h-9 w-16 items-center justify-center rounded-lg border"
+                  className="flex h-10 w-full items-center justify-center rounded-xl border"
                   style={{ borderColor: line, backgroundColor: surface, color: ink }}
                 >
                   <Mail className="size-3.5" />
@@ -277,7 +286,7 @@ export function ProfileCard({
                 type="button"
                 onClick={share}
                 aria-label="Copy profile link"
-                className="flex h-9 w-16 items-center justify-center gap-1 rounded-lg border text-[9px] font-medium transition-opacity hover:opacity-75"
+                className="flex h-10 w-full items-center justify-center gap-1 rounded-xl border text-[9px] font-medium transition-opacity hover:opacity-75"
                 style={{ borderColor: line, backgroundColor: surface, color: muted }}
               >
                 {copied ? (
@@ -294,7 +303,7 @@ export function ProfileCard({
               </button>
             ) : (
               <span
-                className="flex h-9 w-16 items-center justify-center gap-1 rounded-lg border text-[9px] font-medium"
+                className="flex h-10 w-full items-center justify-center gap-1 rounded-xl border text-[9px] font-medium"
                 style={{ borderColor: line, backgroundColor: surface, color: muted }}
               >
                 <Share2 className="size-3" />
@@ -362,12 +371,6 @@ export function ProfileCard({
           )}
         </div>
 
-        <p
-          className="relative mt-4 text-center text-[8px] tracking-[0.16em] uppercase"
-          style={{ color: faint }}
-        >
-          Powered by CoTap
-        </p>
       </div>
     </div>
   )

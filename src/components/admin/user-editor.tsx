@@ -11,6 +11,7 @@ import { LinksEditor } from "@/components/portal/links-editor"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   ApiError,
   PLAN_LABEL,
@@ -48,6 +49,7 @@ export function UserEditor({
   const [name, setName] = useState("")
   const [handle, setHandle] = useState("")
   const [role, setRole] = useState("")
+  const [bio, setBio] = useState("")
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
   const [plan, setPlan] = useState<Plan>("basic")
@@ -68,6 +70,7 @@ export function UserEditor({
       setName(data.user.name)
       setHandle(data.user.handle)
       setRole(data.user.role)
+      setBio(data.user.bio ?? "")
       setEmail(data.user.email ?? "")
       setPhone(data.user.phone ?? "")
       setPlan(data.user.plan)
@@ -103,6 +106,7 @@ export function UserEditor({
           name,
           handle,
           role,
+          bio,
           email,
           phone,
           plan,
@@ -113,6 +117,7 @@ export function UserEditor({
       setName(data.user.name)
       setHandle(data.user.handle)
       setRole(data.user.role)
+      setBio(data.user.bio ?? "")
       setEmail(data.user.email ?? "")
       setPhone(data.user.phone ?? "")
       setStatus(data.user.status)
@@ -330,6 +335,23 @@ export function UserEditor({
               className="h-9 rounded-lg border-white/10 bg-background/60 text-[12px]"
             />
           </div>
+          <div className="grid gap-1.5 sm:col-span-2">
+            <div className="flex items-baseline justify-between">
+              <Label htmlFor="admin-bio" className="text-[10.5px] text-muted-foreground">
+                Bio
+              </Label>
+              <span className="text-[9px] text-muted-foreground/70">{bio.length}/160</span>
+            </div>
+            <Textarea
+              id="admin-bio"
+              value={bio}
+              maxLength={160}
+              onChange={(event) => setBio(event.target.value)}
+              placeholder="A short line about this member."
+              className="min-h-[58px] resize-none rounded-lg border-white/10 bg-background/60 text-[12px]"
+            />
+          </div>
+
           <div className="grid gap-1.5">
             <Label htmlFor="admin-email" className="text-[10.5px] text-muted-foreground">
               Email

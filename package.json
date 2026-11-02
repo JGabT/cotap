@@ -12,8 +12,8 @@
     "cf:dev": "tsc -b && vite build && wrangler dev",
     "lint": "oxlint",
     "dev:worker": "bun run build && wrangler dev",
-    "db:migrate": "wrangler d1 execute cotap-db --remote --file=./migrations/0001_init.sql && wrangler d1 execute cotap-db --remote --file=./migrations/0002_client_auth.sql && wrangler d1 execute cotap-db --remote --file=./migrations/0003_profile_customization.sql",
-    "db:migrate:local": "wrangler d1 execute cotap-db --local --file=./migrations/0001_init.sql && wrangler d1 execute cotap-db --local --file=./migrations/0002_client_auth.sql && wrangler d1 execute cotap-db --local --file=./migrations/0003_profile_customization.sql"
+    "db:migrate": "wrangler d1 execute cotap-db --remote --file=./migrations/0001_init.sql && wrangler d1 execute cotap-db --remote --file=./migrations/0002_client_auth.sql && wrangler d1 execute cotap-db --remote --file=./migrations/0003_profile_customization.sql && wrangler d1 execute cotap-db --remote --file=./migrations/0004_profile_bio.sql",
+    "db:migrate:local": "wrangler d1 execute cotap-db --local --file=./migrations/0001_init.sql && wrangler d1 execute cotap-db --local --file=./migrations/0002_client_auth.sql && wrangler d1 execute cotap-db --local --file=./migrations/0003_profile_customization.sql && wrangler d1 execute cotap-db --local --file=./migrations/0004_profile_bio.sql"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

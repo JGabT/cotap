@@ -13,6 +13,7 @@ import {
   Mail,
   Palette,
   Phone,
+  Quote,
   ShieldCheck,
   Sparkles,
   User,
@@ -26,6 +27,7 @@ import { LinksEditor } from "@/components/portal/links-editor"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   ApiError,
   DEFAULT_THEME,
@@ -72,6 +74,7 @@ function PortalDashboard({ onLoggedOut }: { onLoggedOut: () => void }) {
   const [name, setName] = useState("")
   const [handle, setHandle] = useState("")
   const [role, setRole] = useState("")
+  const [bio, setBio] = useState("")
   const [phone, setPhone] = useState("")
   const [avatarKind, setAvatarKind] = useState<AvatarKind>("initials")
   const [avatarValue, setAvatarValue] = useState<string | null>(null)
@@ -104,6 +107,7 @@ function PortalDashboard({ onLoggedOut }: { onLoggedOut: () => void }) {
       setName(data.user.name)
       setHandle(data.user.handle)
       setRole(data.user.role)
+      setBio(data.user.bio ?? "")
       setPhone(data.user.phone ?? "")
       setAvatarKind(data.user.avatar_kind)
       setAvatarValue(data.user.avatar_value)
@@ -137,6 +141,7 @@ function PortalDashboard({ onLoggedOut }: { onLoggedOut: () => void }) {
           name,
           handle,
           role,
+          bio,
           phone,
           avatar_kind: avatarKind,
           avatar_value: avatarValue,
@@ -147,6 +152,7 @@ function PortalDashboard({ onLoggedOut }: { onLoggedOut: () => void }) {
       setName(data.user.name)
       setHandle(data.user.handle)
       setRole(data.user.role)
+      setBio(data.user.bio ?? "")
       setPhone(data.user.phone ?? "")
       setAvatarKind(data.user.avatar_kind)
       setAvatarValue(data.user.avatar_value)
@@ -313,6 +319,7 @@ function PortalDashboard({ onLoggedOut }: { onLoggedOut: () => void }) {
     name: name || user.name,
     handle: handle || user.handle,
     role,
+    bio: bio || null,
     email: user.email,
     phone,
     plan: user.plan,
@@ -473,6 +480,24 @@ function PortalDashboard({ onLoggedOut }: { onLoggedOut: () => void }) {
                   className="h-9 rounded-lg border-white/10 bg-background/60 text-[12px]"
                 />
               </div>
+              <div className="grid gap-1.5 sm:col-span-2">
+                <div className="flex items-baseline justify-between">
+                  <Label htmlFor="portal-bio" className="flex items-center gap-1.5 text-[10.5px] text-muted-foreground">
+                    <Quote className="size-3 text-primary/70" />
+                    Bio
+                  </Label>
+                  <span className="text-[9px] text-muted-foreground/70">{bio.length}/160</span>
+                </div>
+                <Textarea
+                  id="portal-bio"
+                  value={bio}
+                  maxLength={160}
+                  onChange={(event) => setBio(event.target.value)}
+                  placeholder="A short line about what you do and who you help."
+                  className="min-h-[58px] resize-none rounded-lg border-white/10 bg-background/60 text-[12px]"
+                />
+              </div>
+
               <div className="grid gap-1.5 sm:col-span-2">
                 <Label htmlFor="portal-email" className="flex items-center gap-1.5 text-[10.5px] text-muted-foreground">
                   <Mail className="size-3 text-primary/70" />

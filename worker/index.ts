@@ -16,6 +16,7 @@ interface UserRow {
   name: string
   handle: string
   role: string
+  bio: string | null
   email: string | null
   phone: string | null
   address: string | null
@@ -317,6 +318,7 @@ function publicUser(user: UserRow) {
     name: user.name,
     handle: user.handle,
     role: user.role,
+    bio: user.bio,
     email: user.email,
     phone: user.phone,
     address: user.address,
@@ -384,6 +386,7 @@ async function publicProfile(env: Env, handle: string) {
     name: user.name,
     handle: user.handle,
     role: user.role,
+    bio: user.bio,
     email: user.email,
     phone: user.phone,
     plan: user.plan,
@@ -413,7 +416,7 @@ async function publicProfile(env: Env, handle: string) {
 }
 
 async function listUsers(env: Env, query: string) {
-  const base = `SELECT u.id, u.name, u.handle, u.role, u.email, u.phone, u.address,
+  const base = `SELECT u.id, u.name, u.handle, u.role, u.bio, u.email, u.phone, u.address,
       u.plan, u.status, u.avatar_kind, u.avatar_value, u.theme, u.created_at, u.updated_at,
       (SELECT COUNT(*) FROM links l WHERE l.user_id = u.id) AS links_count
     FROM users u`
@@ -483,6 +486,11 @@ async function updateUser(env: Env, id: number, body: Record<string, unknown>) {
   if (typeof body.role === "string") {
     sets.push("role = ?")
     values.push(normalizeText(body.role, 80))
+  }
+
+  if (typeof body.bio === "string") {
+    sets.push("bio = ?")
+    values.push(normalizeText(body.bio, 160) || null)
   }
 
   if (typeof body.email === "string") {
@@ -873,6 +881,11 @@ async function handleApi(request: Request, env: Env) {
       if (typeof body.role === "string") {
         sets.push("role = ?")
         values.push(normalizeText(body.role, 80))
+      }
+
+      if (typeof body.bio === "string") {
+        sets.push("bio = ?")
+        values.push(normalizeText(body.bio, 160) || null)
       }
 
       if (typeof body.phone === "string") {

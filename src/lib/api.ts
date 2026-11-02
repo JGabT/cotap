@@ -110,6 +110,7 @@ export interface UserRecord {
   name: string
   handle: string
   role: string
+  bio: string | null
   email: string | null
   phone: string | null
   address: string | null
@@ -147,6 +148,7 @@ export interface PublicProfile {
   name: string
   handle: string
   role: string
+  bio: string | null
   email: string | null
   phone: string | null
   plan: Plan
