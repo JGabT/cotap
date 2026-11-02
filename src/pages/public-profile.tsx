@@ -339,9 +339,14 @@ export function PublicProfilePage() {
 
         <footer className="flex flex-col items-center justify-between gap-2 border-t border-white/6 py-5 text-[10px] text-muted-foreground/70 sm:flex-row">
           <p>One card. One tap. Every connection.</p>
-          <Link to="/" className="transition-colors hover:text-foreground">
-            cotap.id
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link to="/portal" className="transition-colors hover:text-foreground">
+              Manage this profile
+            </Link>
+            <Link to="/" className="transition-colors hover:text-foreground">
+              cotap.id
+            </Link>
+          </div>
         </footer>
       </div>
     </div>

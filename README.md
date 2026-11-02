@@ -22,6 +22,7 @@ Full-stack site for **CoTap**, a premium NFC business card that opens a live dig
 | `/faq` | Product and shipping questions |
 | `/order` | Three-step checkout |
 | `/admin` | Owner console for members, links and plans |
+| `/portal` | Client login + self-service profile editor |
 | `/u/:handle` | Public live profile (D1-backed, R2-cached) |
 
 Direct links work because `wrangler.jsonc` uses the SPA fallback for non-API routes.
@@ -32,9 +33,19 @@ Direct links work because `wrangler.jsonc` uses the SPA fallback for non-API rou
 
 D1 tables (`migrations/0001_init.sql`):
 
-- `users` — name, handle, role, email, phone, address, plan (`basic` / `pro` / `team`), status
+- `users` — name, handle, role, email, phone, address, plan (`basic` / `pro` / `team`), status, PBKDF2 password hash
 - `links` — label, URL, order, visibility, owner
 - `orders` — order id, plan, delivery method, shipping, total, payment method
+
+### Auth
+
+There are two independent signed-cookie sessions:
+
+- **Owner admin** — single shared `ADMIN_PASSWORD`, 12-hour session
+- **Clients** — email + password (PBKDF2-SHA256, 100k iterations), 30-day session
+
+Clients can only touch their own profile and links. Admin routes reject client cookies
+and portal routes reject admin cookies.
 
 ### R2 profile cache
 
@@ -52,7 +63,16 @@ The admin UI can also purge a profile manually with **Purge cache**.
 | Method | Route | Auth | Purpose |
 | --- | --- | --- | --- |
 | GET | `/api/profiles/:handle` | public | Cached public profile |
-| POST | `/api/orders` | public | Create an order + upsert a member |
+| POST | `/api/orders` | public | Create an order, member account and session |
+| POST | `/api/auth/login` | public | Client login |
+| POST | `/api/auth/logout` | client | Clear client session |
+| GET | `/api/auth/me` | public | Client session check |
+| POST | `/api/auth/password` | client | Change own password |
+| GET | `/api/portal/profile` | client | Own profile + links |
+| PATCH | `/api/portal/profile` | client | Update own name, handle, role, phone |
+| POST | `/api/portal/links` | client | Add own link |
+| PATCH | `/api/portal/links/:linkId` | client | Edit own link |
+| DELETE | `/api/portal/links/:linkId` | client | Delete own link |
 | POST | `/api/admin/login` | password | Signed 12-hour session cookie |
 | POST | `/api/admin/logout` | session | Clear session |
 | GET | `/api/admin/me` | public | Session check |
@@ -89,16 +109,30 @@ bunx wrangler secret put ADMIN_SESSION_SECRET
 
 For local development, put the same values in `.dev.vars` (gitignored).
 
+## Client portal
+
+Clients sign in at **`/portal`** with their email and password. They can:
+
+- edit their name, username, role and phone
+- add, edit and remove their public links
+- copy or open their live profile
+- change their password
+- request a Pro/Teams upgrade
+
+Plans, status and email changes stay with the owner admin. Every client change
+purges the R2 cache and goes live immediately.
+
 ## Checkout
 
-The checkout collects name, username, phone and address, then offers:
+The checkout collects name, username, phone, address, email and a password. It
+creates the member and login, sets the client session and offers:
 
 - **Delivery** — +₱80, 3–5 working days
 - **Pickup** — free
 
 Card and GCash payment screens are **mock** — no money moves. Submitting the order
-does create a real D1 member and order record, and the new profile is immediately
-available at `/u/username`.
+creates a real D1 member, account and order record, signs the client in, and makes
+the profile immediately available at `/u/username`.
 
 ## Run locally
 
@@ -130,18 +164,21 @@ The Worker bindings are declared in `wrangler.jsonc`:
 - `src/pages/` — one component per route
 - `src/components/site/` — shared marketing sections and page building blocks
 - `src/components/admin/` — login, member editor and link editor
-- `worker/index.ts` — Worker API, auth, D1 queries and R2 cache
-- `migrations/` — D1 schema + demo seed
+- `worker/index.ts` — Worker API, admin/client auth, D1 queries and R2 cache
+- `migrations/0001_init.sql` — schema + demo members
+- `migrations/0002_client_auth.sql` — password hashes + unique email index
 - `src/index.css` — theme tokens, typography and motion
 - `wrangler.jsonc` — Worker, D1, R2 and asset bindings
 
 ## Notes
 
 - Payments are **mock**. No card is charged and no GCash request is sent.
-- The public checkout upserts a member by username. Before production, add
-  ownership checks, rate limiting and a real payment provider (Stripe, PayMongo
-  or GCash).
-- Admin auth is a single shared password, not per-user accounts.
+- The public checkout rejects duplicate usernames and emails. Before production,
+  add rate limiting, email verification and a real payment provider (Stripe,
+  PayMongo or GCash).
+- Admin auth is a single shared password, not per-user accounts. Client passwords
+  are PBKDF2-hashed; add a reset flow before launch.
+- Seeded demo accounts share a demo password. Change or remove them before launch.
 - Social links in the footer point to example handles; update them to the real accounts.
 
 ## Colour

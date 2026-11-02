@@ -21,6 +21,7 @@ interface UserRow {
   address: string | null
   plan: Plan
   status: Status
+  password_hash: string | null
   created_at: string
   updated_at: string
 }
@@ -39,10 +40,12 @@ interface AdminUserRow extends UserRow {
   links_count: number
 }
 
-const SESSION_COOKIE = "cotap_admin"
-const SESSION_TTL = 60 * 60 * 12
+const ADMIN_COOKIE = "cotap_admin"
+const CLIENT_COOKIE = "cotap_client"
+const ADMIN_TTL = 60 * 60 * 12
+const CLIENT_TTL = 60 * 60 * 24 * 30
 const PROFILE_TTL_MS = 1000 * 60 * 60 * 24
-const PLAN_RANK: Record<Plan, number> = { basic: 0, pro: 1, team: 2 }
+const PBKDF2_ITERATIONS = 100_000
 
 function json(data: unknown, status = 200, headers: Record<string, string> = {}) {
   return new Response(JSON.stringify(data), {
@@ -93,6 +96,12 @@ function normalizeUrl(value: unknown) {
 function normalizeText(value: unknown, max: number) {
   const text = String(value ?? "").trim()
   return text ? text.slice(0, max) : ""
+}
+
+function normalizeEmail(value: unknown) {
+  const email = String(value ?? "").trim().toLowerCase()
+  if (!email || email.length > 160) return null
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) ? email : null
 }
 
 function profileKey(handle: string) {
@@ -146,45 +155,151 @@ function timingSafeEqual(a: string, b: string) {
   return result === 0
 }
 
-async function createSession(env: Env) {
-  const payload = base64Url(
-    new TextEncoder().encode(
-      JSON.stringify({ sub: "admin", exp: Date.now() + SESSION_TTL * 1000 })
-    )
-  )
-  const signature = await sign(payload, env.ADMIN_SESSION_SECRET)
-  return `${payload}.${signature}`
+function fromBase64Url(value: string) {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/")
+  const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4)
+  const binary = atob(padded)
+  const bytes = new Uint8Array(binary.length)
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index)
+  }
+  return bytes
 }
 
-async function isAdmin(request: Request, env: Env) {
-  if (!env.ADMIN_SESSION_SECRET) return false
-  const token = parseCookies(request.headers.get("cookie"))[SESSION_COOKIE]
-  if (!token) return false
+async function hashPassword(password: string) {
+  const salt = crypto.getRandomValues(new Uint8Array(16))
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"]
+  )
+  const bits = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      salt,
+      iterations: PBKDF2_ITERATIONS,
+      hash: "SHA-256",
+    },
+    key,
+    256
+  )
+  return `pbkdf2$${PBKDF2_ITERATIONS}$${base64Url(salt)}$${base64Url(new Uint8Array(bits))}`
+}
+
+async function verifyPassword(password: string, stored: string) {
+  const [scheme, iterationsRaw, saltRaw, expected] = stored.split("$")
+  const iterations = Number(iterationsRaw)
+  if (scheme !== "pbkdf2" || !saltRaw || !expected || !Number.isFinite(iterations)) {
+    return false
+  }
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"]
+  )
+  const bits = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      salt: fromBase64Url(saltRaw),
+      iterations,
+      hash: "SHA-256",
+    },
+    key,
+    256
+  )
+  return timingSafeEqual(base64Url(new Uint8Array(bits)), expected)
+}
+
+async function createSession(
+  env: Env,
+  payload: { sub: "admin" } | { sub: "user"; uid: number },
+  ttl: number
+) {
+  const body = base64Url(
+    new TextEncoder().encode(
+      JSON.stringify({ ...payload, exp: Date.now() + ttl * 1000 })
+    )
+  )
+  const signature = await sign(body, env.ADMIN_SESSION_SECRET)
+  return `${body}.${signature}`
+}
+
+async function readSession(
+  request: Request,
+  env: Env,
+  cookieName: string
+) {
+  if (!env.ADMIN_SESSION_SECRET) return null
+  const token = parseCookies(request.headers.get("cookie"))[cookieName]
+  if (!token) return null
 
   const [payload, signature] = token.split(".")
-  if (!payload || !signature) return false
+  if (!payload || !signature) return null
 
   const expected = await sign(payload, env.ADMIN_SESSION_SECRET)
-  if (!timingSafeEqual(signature, expected)) return false
+  if (!timingSafeEqual(signature, expected)) return null
 
   try {
-    const data = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/"))) as {
-      exp?: number
-    }
-    return typeof data.exp === "number" && data.exp > Date.now()
+    const data = JSON.parse(
+      atob(payload.replace(/-/g, "+").replace(/_/g, "/"))
+    ) as { sub?: string; uid?: number; exp?: number }
+    if (typeof data.exp !== "number" || data.exp <= Date.now()) return null
+    return data
   } catch {
-    return false
+    return null
   }
 }
 
-function sessionCookie(request: Request, token: string) {
-  const secure = new URL(request.url).protocol === "https:" ? "; Secure" : ""
-  return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_TTL}${secure}`
+async function isAdmin(request: Request, env: Env) {
+  const session = await readSession(request, env, ADMIN_COOKIE)
+  return session?.sub === "admin"
 }
 
-function clearedCookie(request: Request) {
+async function currentUser(request: Request, env: Env) {
+  const session = await readSession(request, env, CLIENT_COOKIE)
+  if (session?.sub !== "user" || typeof session.uid !== "number") return null
+
+  const user = await env.DB.prepare("SELECT * FROM users WHERE id = ?")
+    .bind(session.uid)
+    .first<UserRow>()
+
+  if (!user || user.status !== "active") return null
+  return user
+}
+
+function publicUser(user: UserRow) {
+  return {
+    id: user.id,
+    name: user.name,
+    handle: user.handle,
+    role: user.role,
+    email: user.email,
+    phone: user.phone,
+    address: user.address,
+    plan: user.plan,
+    status: user.status,
+    created_at: user.created_at,
+    updated_at: user.updated_at,
+  }
+}
+
+function sessionCookie(
+  request: Request,
+  name: string,
+  token: string,
+  ttl: number
+) {
   const secure = new URL(request.url).protocol === "https:" ? "; Secure" : ""
-  return `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure}`
+  return `${name}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${ttl}${secure}`
+}
+
+function clearedCookie(request: Request, name: string) {
+  const secure = new URL(request.url).protocol === "https:" ? "; Secure" : ""
+  return `${name}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure}`
 }
 
 async function publicProfile(env: Env, handle: string) {
@@ -273,7 +388,7 @@ async function userDetail(env: Env, id: number) {
     .bind(id)
     .all<LinkRow>()
 
-  return { user, links }
+  return { user: publicUser(user), links }
 }
 
 async function updateUser(env: Env, id: number, body: Record<string, unknown>) {
@@ -314,8 +429,18 @@ async function updateUser(env: Env, id: number, body: Record<string, unknown>) {
   }
 
   if (typeof body.email === "string") {
+    const email = normalizeEmail(body.email)
+    if (!email) return { error: badRequest("Enter a valid email") }
+    const conflict = await env.DB.prepare(
+      "SELECT id FROM users WHERE email = ? AND id <> ?"
+    )
+      .bind(email, id)
+      .first<{ id: number }>()
+    if (conflict) {
+      return { error: json({ error: "That email is already in use" }, 409) }
+    }
     sets.push("email = ?")
-    values.push(normalizeText(body.email, 160) || null)
+    values.push(email)
   }
 
   if (typeof body.phone === "string") {
@@ -371,15 +496,15 @@ async function handleApi(request: Request, env: Env) {
     if (!body?.password || !timingSafeEqual(body.password, env.ADMIN_PASSWORD)) {
       return json({ error: "Incorrect password" }, 401)
     }
-    const token = await createSession(env)
+    const token = await createSession(env, { sub: "admin" }, ADMIN_TTL)
     return json({ ok: true }, 200, {
-      "set-cookie": sessionCookie(request, token),
+      "set-cookie": sessionCookie(request, ADMIN_COOKIE, token, ADMIN_TTL),
     })
   }
 
   if (path === "/api/admin/logout" && method === "POST") {
     return json({ ok: true }, 200, {
-      "set-cookie": clearedCookie(request),
+      "set-cookie": clearedCookie(request, ADMIN_COOKIE),
     })
   }
 
@@ -549,6 +674,249 @@ async function handleApi(request: Request, env: Env) {
     return notFound("Admin route not found")
   }
 
+  if (path === "/api/auth/login" && method === "POST") {
+    const body = await readBody<{ email?: string; password?: string }>(request)
+    const email = normalizeEmail(body?.email)
+    const password = String(body?.password ?? "")
+
+    if (!email || !password) {
+      return json({ error: "Email or password is incorrect" }, 401)
+    }
+
+    const user = await env.DB.prepare("SELECT * FROM users WHERE email = ?")
+      .bind(email)
+      .first<UserRow>()
+
+    if (
+      !user ||
+      !user.password_hash ||
+      !(await verifyPassword(password, user.password_hash))
+    ) {
+      return json({ error: "Email or password is incorrect" }, 401)
+    }
+
+    if (user.status !== "active") {
+      return json({ error: "This profile is suspended." }, 403)
+    }
+
+    const token = await createSession(
+      env,
+      { sub: "user", uid: user.id },
+      CLIENT_TTL
+    )
+
+    return json(
+      { user: publicUser(user) },
+      200,
+      {
+        "set-cookie": sessionCookie(
+          request,
+          CLIENT_COOKIE,
+          token,
+          CLIENT_TTL
+        ),
+      }
+    )
+  }
+
+  if (path === "/api/auth/logout" && method === "POST") {
+    return json({ ok: true }, 200, {
+      "set-cookie": clearedCookie(request, CLIENT_COOKIE),
+    })
+  }
+
+  if (path === "/api/auth/me") {
+    const user = await currentUser(request, env)
+    return json({ user: user ? publicUser(user) : null })
+  }
+
+  if (path === "/api/auth/password" && method === "POST") {
+    const user = await currentUser(request, env)
+    if (!user) return unauthorized()
+
+    const body = await readBody<{
+      currentPassword?: string
+      newPassword?: string
+    }>(request)
+    const currentPassword = String(body?.currentPassword ?? "")
+    const newPassword = String(body?.newPassword ?? "")
+
+    if (
+      !user.password_hash ||
+      !(await verifyPassword(currentPassword, user.password_hash))
+    ) {
+      return badRequest("Current password is incorrect")
+    }
+    if (newPassword.length < 8) {
+      return badRequest("New password must be at least 8 characters")
+    }
+
+    const passwordHash = await hashPassword(newPassword)
+    await env.DB.prepare(
+      "UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?"
+    )
+      .bind(passwordHash, user.id)
+      .run()
+
+    return json({ ok: true })
+  }
+
+  if (path === "/api/portal/profile") {
+    const user = await currentUser(request, env)
+    if (!user) return unauthorized()
+
+    if (method === "GET") {
+      const detail = await userDetail(env, user.id)
+      return detail ? json(detail) : notFound("Profile not found")
+    }
+
+    if (method === "PATCH") {
+      const body = await readBody<Record<string, unknown>>(request)
+      if (!body) return badRequest("Invalid JSON")
+
+      const sets: string[] = []
+      const values: unknown[] = []
+      let nextHandle = user.handle
+
+      if (typeof body.name === "string") {
+        const name = normalizeText(body.name, 120)
+        if (name.length < 2) return badRequest("Name is too short")
+        sets.push("name = ?")
+        values.push(name)
+      }
+
+      if (typeof body.handle === "string") {
+        const handle = sanitizeHandle(body.handle)
+        if (handle.length < 2) return badRequest("Username is too short")
+        const conflict = await env.DB.prepare(
+          "SELECT id FROM users WHERE handle = ? AND id <> ?"
+        )
+          .bind(handle, user.id)
+          .first<{ id: number }>()
+        if (conflict) {
+          return json({ error: "That username is already taken" }, 409)
+        }
+        nextHandle = handle
+        sets.push("handle = ?")
+        values.push(handle)
+      }
+
+      if (typeof body.role === "string") {
+        sets.push("role = ?")
+        values.push(normalizeText(body.role, 80))
+      }
+
+      if (typeof body.phone === "string") {
+        sets.push("phone = ?")
+        values.push(normalizeText(body.phone, 40) || null)
+      }
+
+      if (!sets.length) return badRequest("Nothing to update")
+
+      sets.push("updated_at = datetime('now')")
+      await env.DB.prepare(
+        `UPDATE users SET ${sets.join(", ")} WHERE id = ?`
+      )
+        .bind(...values, user.id)
+        .run()
+
+      await purgeProfile(env, user.handle)
+      if (nextHandle !== user.handle) await purgeProfile(env, nextHandle)
+
+      const detail = await userDetail(env, user.id)
+      return json(detail)
+    }
+
+    return json({ error: "Method not allowed" }, 405)
+  }
+
+  if (path === "/api/portal/links" && method === "POST") {
+    const user = await currentUser(request, env)
+    if (!user) return unauthorized()
+
+    const body = await readBody<{ label?: string; url?: string }>(request)
+    const label = normalizeText(body?.label, 60)
+    const linkUrl = normalizeUrl(body?.url)
+    if (!label || !linkUrl) {
+      return badRequest("A label and a valid URL are required")
+    }
+
+    const max = await env.DB.prepare(
+      "SELECT COALESCE(MAX(sort_order), -1) AS max FROM links WHERE user_id = ?"
+    )
+      .bind(user.id)
+      .first<{ max: number }>()
+
+    await env.DB.prepare(
+      "INSERT INTO links (user_id, label, url, sort_order) VALUES (?, ?, ?, ?)"
+    )
+      .bind(user.id, label, linkUrl, (max?.max ?? -1) + 1)
+      .run()
+
+    await purgeProfile(env, user.handle)
+    const detail = await userDetail(env, user.id)
+    return json(detail, 201)
+  }
+
+  if (path.startsWith("/api/portal/links/")) {
+    const user = await currentUser(request, env)
+    if (!user) return unauthorized()
+
+    const linkId = Number(path.split("/").pop())
+    if (!Number.isFinite(linkId)) return badRequest("Invalid link")
+
+    const link = await env.DB.prepare(
+      "SELECT id, label, url FROM links WHERE id = ? AND user_id = ?"
+    )
+      .bind(linkId, user.id)
+      .first<{ id: number; label: string; url: string }>()
+    if (!link) return notFound("Link not found")
+
+    if (method === "PATCH") {
+      const body = await readBody<Record<string, unknown>>(request)
+      if (!body) return badRequest("Invalid JSON")
+
+      const sets: string[] = []
+      const values: unknown[] = []
+
+      if (typeof body.label === "string") {
+        const label = normalizeText(body.label, 60)
+        if (!label) return badRequest("Label is required")
+        sets.push("label = ?")
+        values.push(label)
+      }
+      if (typeof body.url === "string") {
+        const linkUrl = normalizeUrl(body.url)
+        if (!linkUrl) return badRequest("Enter a valid URL")
+        sets.push("url = ?")
+        values.push(linkUrl)
+      }
+      if (!sets.length) return badRequest("Nothing to update")
+
+      await env.DB.prepare(
+        `UPDATE links SET ${sets.join(", ")} WHERE id = ? AND user_id = ?`
+      )
+        .bind(...values, linkId, user.id)
+        .run()
+
+      await purgeProfile(env, user.handle)
+      const detail = await userDetail(env, user.id)
+      return json(detail)
+    }
+
+    if (method === "DELETE") {
+      await env.DB.prepare("DELETE FROM links WHERE id = ? AND user_id = ?")
+        .bind(linkId, user.id)
+        .run()
+
+      await purgeProfile(env, user.handle)
+      const detail = await userDetail(env, user.id)
+      return json(detail)
+    }
+
+    return json({ error: "Method not allowed" }, 405)
+  }
+
   if (path.startsWith("/api/profiles/") && method === "GET") {
     const handle = sanitizeHandle(decodeURIComponent(path.split("/").pop() ?? ""))
     if (!handle) return badRequest("A username is required")
@@ -563,6 +931,8 @@ async function handleApi(request: Request, env: Env) {
     const body = await readBody<{
       name?: string
       handle?: string
+      email?: string
+      password?: string
       phone?: string
       address?: string
       plan?: string
@@ -574,11 +944,17 @@ async function handleApi(request: Request, env: Env) {
 
     const name = normalizeText(body?.name, 120)
     const handle = sanitizeHandle(body?.handle)
+    const email = normalizeEmail(body?.email)
+    const password = String(body?.password ?? "")
     const phone = normalizeText(body?.phone, 40)
     const address = normalizeText(body?.address, 300)
 
     if (name.length < 2) return badRequest("Name is required")
     if (handle.length < 2) return badRequest("Username is required")
+    if (!email) return badRequest("A valid email is required")
+    if (password.length < 8) {
+      return badRequest("Password must be at least 8 characters")
+    }
     if (phone.replace(/\D/g, "").length < 7) return badRequest("A phone number is required")
     if (address.length < 5) return badRequest("An address is required")
 
@@ -593,34 +969,39 @@ async function handleApi(request: Request, env: Env) {
     const total = Math.max(0, Number(body?.total) || 0)
     const paymentMethod = body?.paymentMethod === "gcash" ? "gcash" : "card"
 
-    const existing = await env.DB.prepare("SELECT * FROM users WHERE handle = ?")
+    const existingHandle = await env.DB.prepare(
+      "SELECT id FROM users WHERE handle = ?"
+    )
       .bind(handle)
-      .first<UserRow>()
-
-    let userId = existing?.id
-    let finalPlan: Plan = orderedPlan
-
-    if (existing) {
-      finalPlan =
-        PLAN_RANK[orderedPlan] > PLAN_RANK[existing.plan]
-          ? orderedPlan
-          : existing.plan
-      await env.DB.prepare(
-        `UPDATE users SET name = ?, phone = ?, address = ?, plan = ?,
-          updated_at = datetime('now') WHERE id = ?`
+      .first<{ id: number }>()
+    if (existingHandle) {
+      return json(
+        { error: "That username is already taken. Try another." },
+        409
       )
-        .bind(name, phone, address, finalPlan, existing.id)
-        .run()
-    } else {
-      const inserted = await env.DB.prepare(
-        `INSERT INTO users (name, handle, role, phone, address, plan)
-         VALUES (?, ?, 'CoTap member', ?, ?, ?) RETURNING id`
-      )
-        .bind(name, handle, phone, address, orderedPlan)
-        .first<{ id: number }>()
-      userId = inserted?.id
     }
 
+    const existingEmail = await env.DB.prepare(
+      "SELECT id FROM users WHERE email = ?"
+    )
+      .bind(email)
+      .first<{ id: number }>()
+    if (existingEmail) {
+      return json(
+        { error: "That email already has an account. Sign in instead." },
+        409
+      )
+    }
+
+    const passwordHash = await hashPassword(password)
+    const inserted = await env.DB.prepare(
+      `INSERT INTO users (name, handle, role, email, phone, address, plan, password_hash)
+       VALUES (?, ?, 'CoTap member', ?, ?, ?, ?, ?) RETURNING id`
+    )
+      .bind(name, handle, email, phone, address, orderedPlan, passwordHash)
+      .first<{ id: number }>()
+
+    const userId = inserted?.id
     if (!userId) return json({ error: "Could not create your profile" }, 500)
 
     const orderId = `CT-${new Date().getFullYear()}-${crypto
@@ -638,14 +1019,28 @@ async function handleApi(request: Request, env: Env) {
 
     await purgeProfile(env, handle)
 
+    const token = await createSession(
+      env,
+      { sub: "user", uid: userId },
+      CLIENT_TTL
+    )
+
     return json(
       {
         orderId,
         handle,
-        plan: finalPlan,
+        plan: orderedPlan,
         profileUrl: `/u/${handle}`,
       },
-      201
+      201,
+      {
+        "set-cookie": sessionCookie(
+          request,
+          CLIENT_COOKIE,
+          token,
+          CLIENT_TTL
+        ),
+      }
     )
   }
 

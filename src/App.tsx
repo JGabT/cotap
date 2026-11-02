@@ -22,6 +22,9 @@ const PublicProfilePage = lazy(() =>
     default: module.PublicProfilePage,
   }))
 )
+const PortalPage = lazy(() =>
+  import("@/pages/portal").then((module) => ({ default: module.PortalPage }))
+)
 
 function PageLoader() {
   return (
@@ -39,6 +42,7 @@ export default function App() {
         <Routes>
         <Route path="admin" element={<AdminPage />} />
         <Route path="u/:handle" element={<PublicProfilePage />} />
+          <Route path="portal" element={<PortalPage />} />
         <Route element={<SiteLayout />}>
           <Route index element={<HomePage />} />
           <Route path="how-it-works" element={<HowItWorksPage />} />

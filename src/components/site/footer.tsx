@@ -19,6 +19,7 @@ const columns = [
     title: "Company",
     links: [
       { label: "For teams", to: "/teams" },
+      { label: "Client login", to: "/portal" },
       { label: "FAQ", to: "/faq" },
       { label: "Contact", to: "mailto:hello@cotap.id" },
       { label: "Order a card", to: "/order" },

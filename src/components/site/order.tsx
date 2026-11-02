@@ -8,6 +8,8 @@ import {
   CheckCircle2,
   ChevronRight,
   CreditCard,
+  Eye,
+  EyeOff,
   Loader2,
   MapPin,
   Package,
@@ -90,6 +92,9 @@ export function Order({ seed }: { seed?: OrderSeed | null }) {
   const [name, setName] = useState("")
   const [customHandle, setCustomHandle] = useState("")
   const [phone, setPhone] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [address, setAddress] = useState("")
   const [delivery, setDelivery] = useState<"delivery" | "pickup">("delivery")
 
@@ -120,7 +125,9 @@ export function Order({ seed }: { seed?: OrderSeed | null }) {
     name.trim().length >= 2 &&
     handle.length >= 2 &&
     phone.replace(/\D/g, "").length >= 7 &&
-    address.trim().length >= 5
+    address.trim().length >= 5 &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim()) &&
+    password.length >= 8
 
   const paymentValid =
     payment === "gcash" ||
@@ -149,6 +156,8 @@ export function Order({ seed }: { seed?: OrderSeed | null }) {
           body: JSON.stringify({
             name,
             handle: displayHandle,
+            email,
+            password,
             phone,
             address,
             plan,
@@ -287,33 +296,41 @@ export function Order({ seed }: { seed?: OrderSeed | null }) {
 
                   <div className="mx-auto mt-6 flex max-w-sm flex-col gap-2 sm:flex-row">
                     <Button
-                      render={<Link to={profileUrl || `/u/${displayHandle}`} />}
+                      render={<Link to="/portal" />}
                       nativeButton={false}
                       className="h-10 flex-1 rounded-lg text-[12.5px]"
                     >
-                      View live profile
+                      Manage your profile
                       <ArrowUpRight data-icon="inline-end" />
                     </Button>
                     <Button
-                      render={<Link to="/preview" />}
+                      render={<Link to={profileUrl || `/u/${displayHandle}`} />}
                       nativeButton={false}
                       variant="outline"
                       className="h-10 flex-1 rounded-lg border-white/12 bg-white/[0.02] text-[12.5px] hover:bg-white/[0.06]"
                     >
-                      Back to live preview
-                      <ArrowRight data-icon="inline-end" />
+                      View live profile
                     </Button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={startOver}
-                    className="mt-3 text-[10.5px] text-muted-foreground underline decoration-white/20 underline-offset-4 transition-colors hover:text-foreground"
-                  >
-                    Place another order
-                  </button>
+                  <div className="mt-3 flex items-center justify-center gap-3 text-[10.5px] text-muted-foreground">
+                    <Link
+                      to="/preview"
+                      className="underline decoration-white/20 underline-offset-4 transition-colors hover:text-foreground"
+                    >
+                      Back to preview
+                    </Link>
+                    <span className="size-0.5 rounded-full bg-white/20" />
+                    <button
+                      type="button"
+                      onClick={startOver}
+                      className="underline decoration-white/20 underline-offset-4 transition-colors hover:text-foreground"
+                    >
+                      Place another order
+                    </button>
+                  </div>
 
                   <p className="mt-4 text-[10px] text-muted-foreground">
-                    Demo payment · No card was charged. Your profile is saved.
+                    Demo payment · No card was charged. Your profile and login are ready.
                   </p>
                 </div>
               ) : (
@@ -399,33 +416,91 @@ export function Order({ seed }: { seed?: OrderSeed | null }) {
                           </div>
 
                           <div className="grid gap-1.5">
-                            <span className="text-[11px] text-muted-foreground">Card</span>
-                            <div className="grid grid-cols-2 gap-1.5">
-                              {(["basic", "premium"] as const).map((option) => (
-                                <button
-                                  key={option}
-                                  type="button"
-                                  onClick={() => setPlan(option)}
-                                  aria-pressed={plan === option}
-                                  className={cn(
-                                    "rounded-lg border px-2.5 py-1.5 text-left transition-colors",
-                                    plan === option
-                                      ? "border-primary/50 bg-primary/[0.08]"
-                                      : "border-white/10 bg-background/40 hover:bg-white/[0.04]"
-                                  )}
-                                >
-                                  <span className="flex items-baseline justify-between gap-1 text-[10.5px] font-medium">
-                                    {PLANS[option].name}
-                                    <span className="text-[9.5px] text-muted-foreground">
-                                      {peso(PLANS[option].price)}
-                                    </span>
+                            <Label
+                              htmlFor="order-email"
+                              className="text-[11px] text-muted-foreground"
+                            >
+                              Email · your login
+                            </Label>
+                            <Input
+                              id="order-email"
+                              type="email"
+                              value={email}
+                              onChange={(event) => setEmail(event.target.value)}
+                              placeholder="you@company.com"
+                              autoComplete="email"
+                              className="h-10 rounded-lg border-white/10 bg-background/60 text-[13px]"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid gap-1.5">
+                          <div className="flex items-baseline justify-between">
+                            <Label
+                              htmlFor="order-password"
+                              className="text-[11px] text-muted-foreground"
+                            >
+                              Create a password
+                            </Label>
+                            <span className="text-[9px] text-muted-foreground/70">
+                              8+ characters
+                            </span>
+                          </div>
+                          <div className="relative">
+                            <Input
+                              id="order-password"
+                              type={showPassword ? "text" : "password"}
+                              value={password}
+                              onChange={(event) => setPassword(event.target.value)}
+                              placeholder="••••••••"
+                              autoComplete="new-password"
+                              className="h-10 rounded-lg border-white/10 bg-background/60 pr-9 text-[13px]"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword((current) => !current)}
+                              aria-label={showPassword ? "Hide password" : "Show password"}
+                              className="absolute top-1/2 right-2.5 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                            >
+                              {showPassword ? (
+                                <EyeOff className="size-3.5" />
+                              ) : (
+                                <Eye className="size-3.5" />
+                              )}
+                            </button>
+                          </div>
+                          <p className="text-[9.5px] leading-relaxed text-muted-foreground/75">
+                            Use this to sign in and edit your profile at cotap.id/portal.
+                          </p>
+                        </div>
+
+                        <div className="grid gap-1.5">
+                          <span className="text-[11px] text-muted-foreground">Card</span>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {(["basic", "premium"] as const).map((option) => (
+                              <button
+                                key={option}
+                                type="button"
+                                onClick={() => setPlan(option)}
+                                aria-pressed={plan === option}
+                                className={cn(
+                                  "rounded-lg border px-2.5 py-1.5 text-left transition-colors",
+                                  plan === option
+                                    ? "border-primary/50 bg-primary/[0.08]"
+                                    : "border-white/10 bg-background/40 hover:bg-white/[0.04]"
+                                )}
+                              >
+                                <span className="flex items-baseline justify-between gap-1 text-[10.5px] font-medium">
+                                  {PLANS[option].name}
+                                  <span className="text-[9.5px] text-muted-foreground">
+                                    {peso(PLANS[option].price)}
                                   </span>
-                                  <span className="mt-0.5 block text-[8.5px] text-muted-foreground">
-                                    {PLANS[option].material}
-                                  </span>
-                                </button>
-                              ))}
-                            </div>
+                                </span>
+                                <span className="mt-0.5 block text-[8.5px] text-muted-foreground">
+                                  {PLANS[option].material}
+                                </span>
+                              </button>
+                            ))}
                           </div>
                         </div>
 
@@ -458,7 +533,7 @@ export function Order({ seed }: { seed?: OrderSeed | null }) {
                       <p className="mt-2.5 text-center text-[10px] text-muted-foreground/75">
                         {detailsValid
                           ? "Your card preview updates as you type."
-                          : "Add your name, username, phone and address to continue."}
+                          : "Add your details, email and password (8+) to continue."}
                       </p>
                     </div>
                   )}
@@ -725,9 +800,16 @@ export function Order({ seed }: { seed?: OrderSeed | null }) {
                       </div>
 
                       {submitError && (
-                        <p className="mt-3 rounded-lg border border-red-400/20 bg-red-400/10 px-3 py-2 text-[10.5px] text-red-300">
-                          {submitError}
-                        </p>
+                        <div className="mt-3 rounded-lg border border-red-400/20 bg-red-400/10 px-3 py-2 text-[10.5px] text-red-300">
+                          <p>{submitError}</p>
+                          <button
+                            type="button"
+                            onClick={() => setStep(0)}
+                            className="mt-1 underline decoration-red-300/30 underline-offset-2 hover:text-red-200"
+                          >
+                            Edit your details
+                          </button>
+                        </div>
                       )}
 
                       <div className="mt-5 flex gap-2">

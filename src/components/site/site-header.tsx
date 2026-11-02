@@ -66,7 +66,13 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <Link
+            to="/portal"
+            className="hidden text-[12.5px] text-muted-foreground transition-colors hover:text-foreground xl:block"
+          >
+            Sign in
+          </Link>
           <Button
             render={<Link to="/order" />}
             nativeButton={false}
@@ -123,6 +129,13 @@ export function SiteHeader() {
               </nav>
 
               <div className="mt-auto p-5">
+                <Link
+                  to="/portal"
+                  onClick={() => setOpen(false)}
+                  className="mb-3 block text-center text-[11.5px] text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  Already a member? <span className="text-primary">Sign in</span>
+                </Link>
                 <Button
                   render={<Link to="/order" onClick={() => setOpen(false)} />}
                   nativeButton={false}
